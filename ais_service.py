@@ -70,58 +70,64 @@ def martial_listener(name, task, listeners):
 def schedule_tasks(scheduler, tasklist):
     
     for tname,task in tasklist.iteritems():
-        type = task['type']
-        task_obj = task['obj']
-        call_args = task.get('callback_args', None)
-        
-        if type=='cron':
-            if 'cron' in task:
-                scheduler.add_cron_job( task_obj.run, 
-                                year=task['cron'].get('year',None),
-                                month=task['cron'].get('month',None),
-                                day=task['cron'].get('day',None),
-                                week=task['cron'].get('week',None),
-                                day_of_week=task['cron'].get('dow',None),
-                                hour=task['cron'].get('hour',None),
-                                minute=task['cron'].get('minute',None),
-                                second=task['cron'].get('second',None),
-                                start_date = task['cron'].get('startdate',None),
-                                kwargs = call_args,
-                                name=tname)
-            else:
-                logging.error("Cron task %s has no cron specified" % tname)
-                
-        if type=='date':
-            if 'date' in task:
-                scheduler.add_date_job( task_obj.run, date=task['date'],
-                                kwargs=call_args,
-                                name=tname)
-            else:
-                logging.error("Date task %s has no date specified" % tname)
-                
-        if type=='interval':
-            if 'interval' in task:
-                scheduler.add_interval_job( task_obj.run, 
-                                days=task['interval'].get('days',0),
-                                weeks=task['interval'].get('weeks',0),
-                                hours=task['interval'].get('hours',0),
-                                minutes=task['interval'].get('minutes',0),
-                                seconds=task['interval'].get('seconds',0),
-                                start_date = task['interval'].get('startdate',None),
-                                kwargs = call_args,
-                                name=tname)
-            else:
-                logging.error("Interval task %s has no interval specified" 
-                                % tname)
-                                
-        logging.info("Task %s scheduled" % tname)
+        if task.get('enable', True):
+            type = task['type']
+            task_obj = task['obj']
+            call_args = task.get('callback_args', None)
+            
+            if type=='cron':
+                if 'cron' in task:
+                    scheduler.add_cron_job( task_obj.run, 
+                                    year=task['cron'].get('year',None),
+                                    month=task['cron'].get('month',None),
+                                    day=task['cron'].get('day',None),
+                                    week=task['cron'].get('week',None),
+                                    day_of_week=task['cron'].get('dow',None),
+                                    hour=task['cron'].get('hour',None),
+                                    minute=task['cron'].get('minute',None),
+                                    second=task['cron'].get('second',None),
+                                    start_date = task['cron'].get('startdate',None),
+                                    kwargs = call_args,
+                                    name=tname)
+                else:
+                    logging.error("Cron task %s has no cron specified" % tname)
+                    
+            if type=='date':
+                if 'date' in task:
+                    scheduler.add_date_job( task_obj.run, date=task['date'],
+                                    kwargs=call_args,
+                                    name=tname)
+                else:
+                    logging.error("Date task %s has no date specified" % tname)
+                    
+            if type=='interval':
+                if 'interval' in task:
+                    scheduler.add_interval_job( task_obj.run, 
+                                    days=task['interval'].get('days',0),
+                                    weeks=task['interval'].get('weeks',0),
+                                    hours=task['interval'].get('hours',0),
+                                    minutes=task['interval'].get('minutes',0),
+                                    seconds=task['interval'].get('seconds',0),
+                                    start_date = task['interval'].get('startdate',None),
+                                    kwargs = call_args,
+                                    name=tname)
+                else:
+                    logging.error("Interval task %s has no interval specified" 
+                                    % tname)
+                                    
+            logging.info("Task %s scheduled" % tname)
+        else:
+            logging.info("Task $s not scheduled" % tname)
             
 def register_listeners(scheduler, listeners):
 
     for name,listener in listeners.iteritems():
-        scheduler.add_listener(listener['obj'].respond, 
+        if listener.get('enable', True):
+            scheduler.add_listener(listener['obj'].respond, 
                             listener.get('event_mask', 511))
-        logging.info("Listener %s registered." % name)
+            logging.info("Listener %s registered." % name)
+        else:
+            logging.info("Listener %s not registered." % name)
 
 def main():
     ''' Description
