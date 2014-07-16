@@ -29,30 +29,7 @@ class AVT(Task):
 
     """
     
-    def __init__(self, name, **kwargs):
-        
-        Task.__init__(self,name,**kwargs)
-        self._vimba =None
-        self._camTable = {}
-        self._frame = None
-        self._buffer = None # Buffer to store images
-        self._properties = {}
-        self._camera = None
-        self._started = False
 
-#
-    def __del__(self):
-        #This function should disconnect from the Vimba Camera
-        if self._camera is not None:
-
-            if self._frame is not None:
-                self._frame.revokeFrame()
-                self._frame = None
-
-            self._camera.closeCamera()
-            
-        if self._vimba is not None:
-            self._vimba.shutdown()
  
     def start(self, camera_id=-1, properties={},power_ctl=0):
         if not self._started: 
@@ -168,38 +145,16 @@ class AVT(Task):
         logging.info("Last run for {0} was at {1}".format(job.name,
             event.scheduled_run_time))
     
-    def _genFilename(self, basename="./img", dtpattern="%Y-%m-%dT%H%M%S"):
-        #TODO parse namepattern for timedate pattern?
-        #datetime.datetime.now().strftime(dtpattern)
-        delim = "_"
-        if dtpattern is not None:
-            dt = datetime.datetime.now().strftime(dtpattern)
-        basename+=delim+dt    
-        return basename
-    
-    def _configShot(self, **kwargs):
-        if self._started:
-            self.setProperty("ExposureTimeAbs", kwargs.get("ExposureTimeAbs", 125000))
-            self.setProperty("Gain", kwargs.get("Gain", 0))
-            max_width = self.getProperty("WidthMax")
-            max_height = self.getProperty("HeightMax")
-            #Set ROI
-            self.setProperty("Width", kwargs.get("Width", max_width))
-            self.setProperty("Height", kwargs.get("Height", max_height))
-            self.setProperty("OffsetX", kwargs.get("OffsetX", 0))
-            self.setProperty("OffsetY", kwargs.get("OffsetY", 0))
-        else:
-            raise(Exception("AVT Camera is not started."))
-            
-    def _setupVimba(self):
+   
+    def saveImage(self, name, imgtype="tif", timeout=5000):
         
-        self._vimba = Vimba()
-        self._vimba.startup()
-        system = self._vimba.getSystem()
-        if system.GeVTLIsPresent:
-            system.runFeatureCommand("GeVDiscoveryAllOnce")
-            time.sleep(0.2)
-            
+        data = self._captureFrame(timeout)        
+        # Bayer_GB2BGR  used to get acceptable 3-band 16-bit format
+        # for cv2.imwrite. this is easiest lib/method to keep 16bit format                             
+        bgr = cv2.cvtColor(data, cv2.COLOR_BAYER_GB2BGR)
+        #TODO test for file extension first?
+        name += "." + imgtype
+        cv2.imwrite(name, bgr)           
           
     def listAllCameras(self):
         """
@@ -268,7 +223,32 @@ class AVT(Task):
         0 on success
         """
         return self._camera.runFeatureCommand(command)
-          
+ 
+    def __init__(self, name, **kwargs):
+        
+        Task.__init__(self,name,**kwargs)
+        self._vimba =None
+        self._camTable = {}
+        self._frame = None
+        self._buffer = None # Buffer to store images
+        self._properties = {}
+        self._camera = None
+        self._started = False
+
+#
+    def __del__(self):
+        #This function should disconnect from the Vimba Camera
+        if self._camera is not None:
+
+            if self._frame is not None:
+                self._frame.revokeFrame()
+                self._frame = None
+
+            self._camera.closeCamera()
+            
+        if self._vimba is not None:
+            self._vimba.shutdown()
+         
     def _refreshFrameStats(self):
         self.width = self.getProperty("Width")
         self.height = self.getProperty("Height")
@@ -310,17 +290,38 @@ class AVT(Task):
         except Exception, e:
             print "Exception acquiring frame: %s: %s" % (e, traceback.format_exc())
             raise(e)
-            
+ 
+    def _setupVimba(self):
         
-    def saveImage(self, name, imgtype="tif", timeout=5000):
+        self._vimba = Vimba()
+        self._vimba.startup()
+        system = self._vimba.getSystem()
+        if system.GeVTLIsPresent:
+            system.runFeatureCommand("GeVDiscoveryAllOnce")
+            time.sleep(0.2)           
         
-        data = self._captureFrame(timeout)        
-        # Bayer_GB2BGR  used to get acceptable 3-band 16-bit format
-        # for cv2.imwrite. this is easiest lib/method to keep 16bit format                             
-        bgr = cv2.cvtColor(data, cv2.COLOR_BAYER_GB2BGR)
-        #TODO test for file extension first?
-        name += "." + imgtype
-        cv2.imwrite(name, bgr)  
+    def _genFilename(self, basename="./img", dtpattern="%Y-%m-%dT%H%M%S"):
+        #TODO parse namepattern for timedate pattern?
+        #datetime.datetime.now().strftime(dtpattern)
+        delim = "_"
+        if dtpattern is not None:
+            dt = datetime.datetime.now().strftime(dtpattern)
+        basename+=delim+dt    
+        return basename
+    
+    def _configShot(self, **kwargs):
+        if self._started:
+            self.setProperty("ExposureTimeAbs", kwargs.get("ExposureTimeAbs", 125000))
+            self.setProperty("Gain", kwargs.get("Gain", 0))
+            max_width = self.getProperty("WidthMax")
+            max_height = self.getProperty("HeightMax")
+            #Set ROI
+            self.setProperty("Width", kwargs.get("Width", max_width))
+            self.setProperty("Height", kwargs.get("Height", max_height))
+            self.setProperty("OffsetX", kwargs.get("OffsetX", 0))
+            self.setProperty("OffsetY", kwargs.get("OffsetY", 0))
+        else:
+            raise(Exception("AVT Camera is not started."))
                     
         
         
