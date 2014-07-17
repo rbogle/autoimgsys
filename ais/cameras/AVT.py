@@ -13,6 +13,7 @@
 """
 
 from ais.task import Task
+from ais.sensors.relay import Relay
 import logging
 import time
 import numpy as np
@@ -25,16 +26,76 @@ from pymba import *
 class AVT(Task):
     """AVT class provides interfaces for control of generic AVT cameras.
 
-        this class relies upon the Vimba SDK and pymba interface for control
-
+        This class relies upon the Vimba SDK and pymba interface for control.
+        And implements the Task interface for scheduled runs by ais_service.
+        
+        Instances of this class used elsewhere will need to at a minimum
+        call start() and stop() before and after manipulating the camera 
+        properties or capturing images.
+        
     """
+    def run(self, **kwargs):
+        """Initalizes camera system, configures camera, and collects image(s)
+            
+            Args:
+                **kwargs: Named arguments to configure camera for shot(s)
+                          Used keywords are the following:
+                              
+                    Datepattern (opt) : passed as strftime format
+                                        used for filename YYYY-MM-DDTHHMMSS
+                    Filename (opt) : Base path and name for filename ./img
+                    Timeout (opt) : millseconds to wait for image return
+                    Sequence (opt): list of dictionaries with the following:
+                                    each dict given will be a numbered image
+                    ExposureTimeAbs (opt) : image exposure time in uSec
+                                            125000 default
+                    Gain (opt) : 0-26db gain integer steps 0 default
+                    Height (opt) : requested image height max default
+                    Width (opt) : requested image width max default
+                    OffsetX (opt) : requested image x offset 0 default
+                    OffsetY (opt) : requested image y offest 0 default
+                    
+        """
+        try: # we dont want to crash the ais_service so just log errors
+           
+           #we need to start camerasys as this is task callback
+            powerport= kwargs.get("Powerport", 0)
+            if not self._started:   
+                self.start(power_ctl=powerport)
+                
+            datepattern = kwargs.get("Datepattern", "%Y-%m-%dT%H%M%S" )    
+            filename = self._genFilename(kwargs.get('Filename', "./img"), 
+                                         datepattern)
+            imgtype = kwargs.get("Imagetype", 'tif')
+            timeout = kwargs.get("Timeout", 5000)
+            sequence = kwargs.get('Sequence', None)
+            
+            #do we have a sequence to take or one-shot
+            if sequence is not None:
+                if isinstance(sequence,list):
+                    for i,shot in enumerate(sequence):
+                        fname=filename+"_"+ "%02d" % i
+                        self._configShot(**shot)
+                        self.saveImage(fname,imgtype,timeout)
+            else:
+                #looking for settings for one-shot
+                self._configShot(**kwargs)
+                self.saveImage(filename,imgtype,timeout)
+                
+            self.stop(power_ctl = powerport)        
+        except Exception as e:
+            logging.error( str(e))
+            
+        logging.info("%s ran its task" % self.name)
+        
+    def respond(self, event):
+        pass
     
-
- 
-    def start(self, camera_id=-1, properties={},power_ctl=0):
+    def start(self, camera_id=-1, properties={}, power_ctl=0):
         if not self._started: 
-            if (power_ctl):        
-                self._power(power_ctl, True);
+            if self._powerctlr is not None:        
+                self._power(power_ctl, True)
+                
                
             self._setupVimba()
             
@@ -67,7 +128,8 @@ class AVT(Task):
             self.setProperty("AcquisitionMode","SingleFrame")
             self.setProperty("TriggerSource","Freerun")
     
-            # TODO: FIX
+            # TODO: FIX to get valid modes as prop and adj 
+            #       img capture to approp bit depth
             if properties.get("mode", "RGB") == 'gray':
                 self.setProperty("PixelFormat", "Mono8")
             else:
@@ -107,44 +169,12 @@ class AVT(Task):
             except VimbaException,ve :
                 print "Vimba exception %d: %s" % (ve.errorCode, ve.message)
                 
-            if(power_ctl):        
+            if self._powerctlr is not None:        
                 self._power(power_ctl, False)
             
             self._started = False    
         
-    def run(self, **kwargs):
-        #we need to start camerasys as this is task callback
-        if not self._started:        
-            self.start()
-            
-        filename = self._genFilename(kwargs.get('Filename', "./img"))
-        imgtype = kwargs.get("Imagetype", 'tif')
-        timeout = kwargs.get("Timeout", 5000)
-        sequence = kwargs.get('Sequence', None)
-        
-        #do we have a sequence to take or one-shot
-        if sequence is not None:
-            if isinstance(sequence,list):
-                for i,shot in enumerate(sequence):
-                    fname=filename+"_"+ "%02d" % i
-                    self._configShot(**shot)
-                    self.saveImage(fname,imgtype,timeout)
-        else:
-            #looking for settings for one-shot
-            self._configShot(**kwargs)
-            self.saveImage(filename,imgtype,timeout)
-            
-        self.stop()        
 
-        logging.info("%s ran its task" % self.name)
- 
-        
-    def respond(self, event):
-        job = event.job
-        logging.info("Job {0} has run {1} times".format(job.name, job.runs))
-        logging.info("Last run for {0} was at {1}".format(job.name,
-            event.scheduled_run_time))
-    
    
     def saveImage(self, name, imgtype="tif", timeout=5000):
         
@@ -234,6 +264,11 @@ class AVT(Task):
         self._properties = {}
         self._camera = None
         self._started = False
+        self._powerctlr = self._marshal_obj('powerctlr', **kwargs)
+        #powcls = self._powerctlr.__class__()
+        if not isinstance(self._powerctlr, Relay):
+            self._powerctlr = None
+            logging.error("PowerController is not a Relay Object")
 
 #
     def __del__(self):
@@ -322,6 +357,14 @@ class AVT(Task):
             self.setProperty("OffsetY", kwargs.get("OffsetY", 0))
         else:
             raise(Exception("AVT Camera is not started."))
-                    
+    
+    def _power(self, powerport=0, powerstate=False):
         
-        
+        if self._powerctlr is not None:
+            try:
+                self._powerctlr.set_port(powerport, powerstate)
+            except Exception as e:
+                logging.error(str(e))                 
+        else:        
+            logging.error("No power controller is configured.")
+            

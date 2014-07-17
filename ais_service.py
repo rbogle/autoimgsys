@@ -73,7 +73,7 @@ def schedule_tasks(scheduler, tasklist):
         if task.get('enable', True):
             type = task['type']
             task_obj = task['obj']
-            call_args = task.get('callback_args', None)
+            call_args = task.get('run_args', None)
             
             if type=='cron':
                 if 'cron' in task:

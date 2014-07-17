@@ -36,9 +36,31 @@ tasks = {
         'module': 'ais.cameras.AVT',
         'class': 'AVT',
         'enable': True,
-        'init_args': { 'repeat': 10, 'delay': 30},
-        'callback_args': { 'mode': 'HDR', 'start': 0, 'step': 2},
-        'cron': {'minute': '*/1'}
+        'init_args': { 
+            'powerctlr':{
+                'module': 'ais.sensors.phidget',
+                'class': 'Phidget'
+            }
+        },
+        'run_args': { 'Filename': 'HDR_test', 'Sequence': [
+                {'ExposureTimeAbs': 125},
+                {'ExposureTimeAbs': 250},
+                {'ExposureTimeAbs': 500},
+                {'ExposureTimeAbs': 1000},
+                {'ExposureTimeAbs': 2000},
+                {'ExposureTimeAbs': 4000},
+                {'ExposureTimeAbs': 8000},
+                {'ExposureTimeAbs': 16000},
+                {'ExposureTimeAbs': 32000},
+                {'ExposureTimeAbs': 64000},
+                {'ExposureTimeAbs': 128000},
+                {'ExposureTimeAbs': 256000},
+                {'ExposureTimeAbs': 512000},
+                {'ExposureTimeAbs': 1024000}
+            ],
+            'Powerport': 0
+            },
+        'cron': {'minute': '*/10'}
     }
 }
 
