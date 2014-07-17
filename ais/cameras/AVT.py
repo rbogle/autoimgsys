@@ -95,7 +95,7 @@ class AVT(Task):
         if not self._started: 
             if self._powerctlr is not None:        
                 self._power(power_ctl, True)
-                
+                time.sleep(self._powerdelay)
                
             self._setupVimba()
             
@@ -264,6 +264,7 @@ class AVT(Task):
         self._properties = {}
         self._camera = None
         self._started = False
+        self._powerdelay = kwargs.get('Powerdelay', 2)
         self._powerctlr = self._marshal_obj('powerctlr', **kwargs)
         #powcls = self._powerctlr.__class__()
         if not isinstance(self._powerctlr, Relay):
