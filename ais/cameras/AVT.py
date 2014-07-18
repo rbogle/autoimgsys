@@ -264,8 +264,8 @@ class AVT(Task):
         self._properties = {}
         self._camera = None
         self._started = False
-        self._powerdelay = kwargs.get('Powerdelay', 2)
-        self._powerctlr = self._marshal_obj('powerctlr', **kwargs)
+        self._powerdelay = kwargs.get('Powerdelay', 5)
+        self._powerctlr = self._marshal_obj('Powerctlr', **kwargs)
         #powcls = self._powerctlr.__class__()
         if not isinstance(self._powerctlr, Relay):
             self._powerctlr = None
