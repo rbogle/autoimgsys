@@ -3,8 +3,7 @@ import importlib
 
 class Task(object):
 
-    def __init__(self, name, **kwargs):
-        self.name = name
+    def __init__(self, **kwargs):
         vars(self).update(kwargs)
     
     def run(self, **kwargs):

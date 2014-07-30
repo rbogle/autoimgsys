@@ -33,7 +33,7 @@ log_conf = {
 tasks = {
     'CronTrigger': {
         'type': 'cron',
-        'module': 'ais.cameras.AVT',
+        'module': 'ais.cameras.avt',
         'class': 'AVT',
         'enable': True,
         'init_args': { 

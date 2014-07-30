@@ -254,9 +254,9 @@ class AVT(Task):
         """
         return self._camera.runFeatureCommand(command)
  
-    def __init__(self, name, **kwargs):
+    def __init__(self, **kwargs):
         
-        Task.__init__(self,name,**kwargs)
+        Task.__init__(self,**kwargs)
         self._vimba =None
         self._camTable = {}
         self._frame = None
