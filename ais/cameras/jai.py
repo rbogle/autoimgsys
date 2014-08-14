@@ -22,10 +22,11 @@ import logging
 import time
 import numpy as np
 import cv2
+import ctypes
 import traceback
 import datetime
 
-def Sensor(Object):
+class Sensor(object):
     
     def __init__(self, **kwargs):
         self.name = kwargs.get("Name",None)
@@ -35,10 +36,10 @@ def Sensor(Object):
         self.stream = kwargs.get("Stream", None)
         self.last_payload = 0
 
-def JAI_AD80GE(Task):
+class JAI_AD80GE(Task):
     
     def run(self, **kwargs):
-    """Initalizes camera system, configures camera, and collects image(s)
+        """Initalizes camera system, configures camera, and collects image(s)
         
         Args:
             **kwargs: Named arguments to configure camera for shot(s)
@@ -57,24 +58,24 @@ def JAI_AD80GE(Task):
                 Width (opt) : requested image width max default
                 OffsetX (opt) : requested image x offset 0 default
                 OffsetY (opt) : requested image y offest 0 default       
-    """
+        """
         pass
     
     def respond(self, event):
         pass
     
-    def start(self):
+    def start(self, power_ctl=0):
         if not self._started: 
             if self._powerctlr is not None:        
                 self._power(power_ctl, True)
                 time.sleep(self._powerdelay)
             try:
                 Aravis.update_device_list()
-                for sens in self._sensors
+                for sens in self._sensors:
                     sens.cam = Aravis.Camera.new(sens.mac)
                     sens.dev = sens.cam.get_device();
                     sens.stream = sens.cam.create_stream(None, None)
-            except TypeError as te:
+            except TypeError:
                 #TODO fix me up
                 logging.error("Camera could not be instantiated")
                 self._started = False                
@@ -86,35 +87,32 @@ def JAI_AD80GE(Task):
     def stop(self):
         self._started = False
 
+    def save_image(self, name, imgtype=".tif"):
+        if not self._started:
+            logging.error("Camera device must be started before capture")
+            return None
+        else:
+            for sens in self._sensors:
+                data = self._capture_frame(sens)
+                # Bayer_GB2BGR  used to get acceptable 3-band 16-bit format
+                # for cv2.imwrite. this is easiest lib/method to keep 16bit format                             
+                bgr = cv2.cvtColor(data, cv2.COLOR_BAYER_GB2BGR)
+                #TODO test name for file extension first?
+                name += "_"+sens.name+"." + imgtype
+                cv2.imwrite(name, bgr)
+        
+    def add_sensor(self, name, macaddress):
+        kwa = {'Name': name, 'Mac': macaddress}
+        sensor = Sensor(**kwa)
+        self._sensors.append(sensor)
 
-    def __init__(self,**kwargs):
-        """Initializes camera instance
-        
-           Args:
-               **kwargs Named arguments to configure the camera(s)
-                   Sensors: dict of name: mac address for each of the sensors on board
-        """
-        Task.__init__(self,**kwargs)
-        
-        sensors = kwargs.get("Sensors",())
-        self._sensors = list()
-        for s in sensors:
-            self._sensors.append( Sensor(**s) )
-            
-        self._started = False
-        self._powerdelay = kwargs.get('Powerdelay', 15)
-        self._powerctlr = self._marshal_obj('Powerctlr', **kwargs)
-    
-        if not isinstance(self._powerctlr, Relay):
-            self._powerctlr = None
-            logging.error("PowerController is not a Relay Object")
     
     def get_feature_type(self, name, sensor):
 
         genicam = sensor.dev.get_genicam()
         node = genicam.get_node(name)
         if not node:
-            raise AravisException("Feature {} does not seem to exist in camera".format(name))
+            raise Exception("Feature {} does not seem to exist in camera".format(name))
         return node.get_node_name()
         
     def get_feature_vals(self, name, sensor):
@@ -125,7 +123,7 @@ def JAI_AD80GE(Task):
         if ntype == "Enumeration":
             return sensor.dev.get_available_enumeration_feature_values_as_strings(name)
         else:
-            raise AravisException("{} is not an enumeration but a {}".format(name, ntype))
+            raise Exception("{} is not an enumeration but a {}".format(name, ntype))
             
     def get_feature(self, name, sensor):
         """
@@ -143,7 +141,7 @@ def JAI_AD80GE(Task):
         else:
             logging.warning("Feature type not implemented: ", ntype)
 
-    def set_feature(self, name, val. sensor):
+    def set_feature(self, name, val, sensor):
         """
         set value of a feature
         """
@@ -157,8 +155,40 @@ def JAI_AD80GE(Task):
         elif ntype == "Boolean":
             return sensor.dev.set_integer_feature_value(name, int(val))
         else:
-            loggomg.warning("Feature type not implemented: ", ntype)  
+            logging.warning("Feature type not implemented: ", ntype)  
+
+    def __init__(self,**kwargs):
+        """Initializes camera instance
+        
+           Args:
+               **kwargs Named arguments to configure the camera(s)
+                   Sensors: dict of name: mac address for each of the sensors on board
+        """
+        Task.__init__(self,**kwargs)
+        
+        sensors = kwargs.get('Sensors',())
+        self._sensors = list()
+        for s in sensors:
+            self._sensors.append( Sensor(**s) )
             
+        self._started = False
+        self._powerdelay = kwargs.get('Powerdelay', 15)
+        self._powerctlr = self._marshal_obj('Powerctlr', **kwargs)
+    
+        if not isinstance(self._powerctlr, Relay):
+            self._powerctlr = None
+            logging.error("PowerController is not a Relay Object")
+            
+    def _capture_frame(self, sensor):
+        frame = None
+        if sensor is not None:
+            self._start_acquisition(sensor) 
+            frame = self._pop_frame(sensor)
+            self._stop_acquisition(sensor)
+        else:
+            logging.error("Capture_Frame failed not a valid sensor")
+        return frame    
+        
     def _pop_frame(self, sensor):
 
         buf = sensor.stream.pop_buffer()
@@ -169,7 +199,7 @@ def JAI_AD80GE(Task):
         else:
             return None    
             
-    def _create_buffers(self, nb=1, payload=None, sensor):
+    def _create_buffers(self, sensor, nb=1, payload=None):
         if not payload:
             payload = sensor.cam.get_payload()
         logging.info("Creating {} memory buffers of size {}".format(nb, payload))
@@ -190,20 +220,21 @@ def JAI_AD80GE(Task):
         im = im.copy()
         return im
     
-    def _start_acquisition(self, nb_buffers=1, sensor):
+    def _start_acquisition(self, sensor, nb_buffers=1):
         logging.info("starting acquisition")
-        sensor.set_feature("AcquisitionMode", "Continuous") 
+        self.set_feature("AcquisitionMode", "Continuous", sensor) 
         payload = sensor.cam.get_payload()
-        if payload != sensor._last_payload:
+        if payload != sensor.last_payload:
             #FIXME should clear buffers
-            self._create_buffers(nb_buffers, payload, sensor) 
+            self._create_buffers(sensor,nb_buffers, payload) 
             sensor.last_payload = payload
         sensor.cam.start_acquisition()
 
     def _stop_acquisition(self, sensor):
+        logging.info("Stopping acquisition")
         sensor.cam.stop_acquisition()
           
-    def _genFilename(self, basename="./img", dtpattern="%Y-%m-%dT%H%M%S"):
+    def _gen_filename(self, basename="./img", dtpattern="%Y-%m-%dT%H%M%S"):
         #TODO parse namepattern for timedate pattern?
         #datetime.datetime.now().strftime(dtpattern)
         delim = "_"
@@ -212,7 +243,7 @@ def JAI_AD80GE(Task):
         basename+=delim+dt    
         return basename
     
-    def _configShot(self, **kwargs, sensor):
+    def _config_shot(self,sensor,**kwargs):
         if self._started:
             self.set_feature("ExposureTimeAbs", kwargs.get("ExposureTimeAbs", 125000),sensor)
             self.set_feature("Gain", kwargs.get("Gain", 0),sensor)
