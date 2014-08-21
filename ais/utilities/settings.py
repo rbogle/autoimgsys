@@ -37,13 +37,13 @@ tasks = {
         'class': 'AVT',
         'enable': True,
         'init_args': { 
-            'Powerctlr':{
+            'power_ctlr':{
                 'module': 'ais.sensors.phidget',
                 'class': 'Phidget'
             },
-            'Powerdelay': 5
+            'power_delay': 5
         },
-        'run_args': { 'Filename': 'HDR_test', 'Sequence': [
+        'run_args': { 'file_name': 'HDR_test', 'sequence': [
                 {'ExposureTimeAbs': 125},
                 {'ExposureTimeAbs': 250},
                 {'ExposureTimeAbs': 500},
@@ -59,7 +59,7 @@ tasks = {
                 {'ExposureTimeAbs': 512000},
                 {'ExposureTimeAbs': 1024000}
             ],
-            'Powerport': 0
+            'power_port': 0
             },
         'cron': {'minute': '*/10'}
     }

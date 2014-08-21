@@ -41,11 +41,11 @@ class AVT(Task):
                 **kwargs: Named arguments to configure camera for shot(s)
                           Used keywords are the following:
                               
-                    Datepattern (opt) : passed as strftime format
+                    date_pattern (opt) : passed as strftime format
                                         used for filename YYYY-MM-DDTHHMMSS
-                    Filename (opt) : Base path and name for filename ./img
-                    Timeout (opt) : millseconds to wait for image return
-                    Sequence (opt): list of dictionaries with the following:
+                    file_name (opt) : Base path and name for filename ./img
+                    timeout (opt) : millseconds to wait for image return
+                    sequence (opt): list of dictionaries with the following:
                                     each dict given will be a numbered image
                     ExposureTimeAbs (opt) : image exposure time in uSec
                                             125000 default
@@ -59,16 +59,16 @@ class AVT(Task):
         try: # we dont want to crash the ais_service so just log errors
            
            #we need to start camerasys as this is task callback
-            powerport= kwargs.get("Powerport", 0)
+            powerport= kwargs.get("power_port", 0)
             if not self._started:   
                 self.start(power_ctl=powerport)
                 
-            datepattern = kwargs.get("Datepattern", "%Y-%m-%dT%H%M%S" )    
-            filename = self._genFilename(kwargs.get('Filename', "./img"), 
+            datepattern = kwargs.get("date_pattern", "%Y-%m-%dT%H%M%S" )    
+            filename = self._genFilename(kwargs.get('file_name', "./img"), 
                                          datepattern)
-            imgtype = kwargs.get("Imagetype", 'tif')
-            timeout = kwargs.get("Timeout", 5000)
-            sequence = kwargs.get('Sequence', None)
+            imgtype = kwargs.get("image_type", 'tif')
+            timeout = kwargs.get("timeout", 5000)
+            sequence = kwargs.get('sequence', None)
             
             #do we have a sequence to take or one-shot
             if sequence is not None:
@@ -85,7 +85,7 @@ class AVT(Task):
             self.stop(power_ctl = powerport)        
         except Exception as e:
             logging.error( str(e))
-            
+            return
         logging.info("%s ran its task" % self.name)
         
     def respond(self, event):
@@ -264,8 +264,8 @@ class AVT(Task):
         self._properties = {}
         self._camera = None
         self._started = False
-        self._powerdelay = kwargs.get('Powerdelay', 5)
-        self._powerctlr = self._marshal_obj('Powerctlr', **kwargs)
+        self._powerdelay = kwargs.get('power_delay', 5)
+        self._powerctlr = self._marshal_obj('power_ctlr', **kwargs)
         #powcls = self._powerctlr.__class__()
         if not isinstance(self._powerctlr, Relay):
             self._powerctlr = None
@@ -347,15 +347,15 @@ class AVT(Task):
     
     def _configShot(self, **kwargs):
         if self._started:
-            self.setProperty("ExposureTimeAbs", kwargs.get("ExposureTimeAbs", 125000))
-            self.setProperty("Gain", kwargs.get("Gain", 0))
+            self.setProperty("ExposureTimeAbs", kwargs.get("exposure_time", 125000))
+            self.setProperty("Gain", kwargs.get("gain", 0))
             max_width = self.getProperty("WidthMax")
             max_height = self.getProperty("HeightMax")
             #Set ROI
-            self.setProperty("Width", kwargs.get("Width", max_width))
-            self.setProperty("Height", kwargs.get("Height", max_height))
-            self.setProperty("OffsetX", kwargs.get("OffsetX", 0))
-            self.setProperty("OffsetY", kwargs.get("OffsetY", 0))
+            self.setProperty("Width", kwargs.get("width", max_width))
+            self.setProperty("Height", kwargs.get("height", max_height))
+            self.setProperty("OffsetX", kwargs.get("offset_x", 0))
+            self.setProperty("OffsetY", kwargs.get("offset_y", 0))
         else:
             raise(Exception("AVT Camera is not started."))
     
