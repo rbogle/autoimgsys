@@ -31,10 +31,10 @@ log_conf = {
 '''
 
 tasks = {
-    'CronTrigger': {
+    'TestCronTrigger': {
         'type': 'cron',
-        'module': 'ais.cameras.avt',
-        'class': 'AVT',
+        'module': 'ais.test.test_task',
+        'class': 'Test_Task',
         'enable': True,
         'init_args': { 
             'power_ctlr':{
@@ -61,7 +61,7 @@ tasks = {
             ],
             'power_port': 0
             },
-        'cron': {'minute': '*/10'}
+        'cron': {'minute': '*/1'}
     }
 }
 
@@ -78,10 +78,10 @@ tasks = {
 '''
 
 listeners = {
-    'ImgPostProc':{
-        'module': 'ais.cameras.AVT',
-        'class': 'AVT',
-        'enable': False,
+    'TestTaskListener':{
+        'module': 'ais.test.test_task',
+        'class': 'Test_Task',
+        'enable': True,
         'event_mask': EVENT_JOB_EXECUTED
     }
 }

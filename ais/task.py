@@ -24,6 +24,7 @@ class Task(object):
         try:
             obj_mod= importlib.import_module(obj_args.get('module'))
             obj_cls = getattr(obj_mod, obj_args.get('class'))
+            #TODO test for and pass init_args
             obj = obj_cls()
             
         except AssertionError:
