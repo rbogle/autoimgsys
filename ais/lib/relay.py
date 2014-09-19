@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
+from plugin import Plugin
 
-class Relay(object):
-    
+class Relay(Plugin):
     
     def set_port(self, port, state):
         raise NotImplementedError

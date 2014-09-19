@@ -1,0 +1,8 @@
+[Core]
+Name = Phidget
+Module = phidget
+
+[Documentation]
+Author = Rian Bogle
+Version = 0.1
+Description = Driver for Phidgets Interface relay board 

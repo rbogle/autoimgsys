@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from relay import Relay
+from ais.lib.relay import Relay
 import logging
 from Phidgets.PhidgetException import PhidgetException
 from Phidgets.Devices.InterfaceKit import InterfaceKit
+
+logger = logging.getLogger(__name__)
 
 class Phidget(Relay):
 
@@ -13,7 +15,7 @@ class Phidget(Relay):
             try:
                 self.interfaceKit.setOutputState(port, state)
             except PhidgetException as e:
-                logging.error("Phidget Exception %i: %s" % (e.code, e.details))
+                logger.error("Phidget Exception %i: %s" % (e.code, e.details))
             finally:
                 self.disconnect()
             return True
@@ -28,15 +30,15 @@ class Phidget(Relay):
             self.interfaceKit.waitForAttach(10000)
             
         except RuntimeError as e:
-            logging.error("Runtime error: %s" % e.message)
+            logger.error("Runtime error: %s" % e.message)
             return False
             
         except PhidgetException as e:
-            logging.error("Phidget Exception %i: %s" % (e.code, e.details))
+            logger.error("Phidget Exception %i: %s" % (e.code, e.details))
             try:
                 self.interfaceKit.closePhidget()
             except PhidgetException as e:
-                logging.error("Phidget Exception %i: %s" % (e.code, e.details))
+                logger.error("Phidget Exception %i: %s" % (e.code, e.details))
             return False
             
         return True
@@ -45,5 +47,5 @@ class Phidget(Relay):
         try:
             self.interfaceKit.closePhidget()
         except PhidgetException as e:
-            logging.error("Phidget Exception %i: %s" % (e.code, e.details))
+            logger.error("Phidget Exception %i: %s" % (e.code, e.details))
     

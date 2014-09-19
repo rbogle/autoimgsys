@@ -13,9 +13,9 @@
     This device has two cameras one RGB visible and one Mono NIR.
 """    
 
-from ais.cameras.aravis import *
-from ais.task import Task
-from ais.sensors.relay import Relay
+from ais.plugins.jai.aravis import *
+from ais.lib.task import PoweredTask
+from ais.lib.relay import Relay
 
 import logging
 import time
@@ -25,6 +25,8 @@ import ctypes
 import traceback
 import datetime
 
+logger = logging.getLogger(__name__)
+
 class Sensor(object):
     
     def __init__(self, **kwargs):
@@ -32,7 +34,7 @@ class Sensor(object):
         self.mac = kwargs.get("mac", None)
         self.cam = None
 
-class JAI_AD80GE(Task):
+class JAI_AD80GE(PoweredTask):
     
     def run(self, **kwargs):
         """Initalizes camera system, configures camera, and collects image(s)
@@ -86,9 +88,9 @@ class JAI_AD80GE(Task):
     
             self.stop(power_ctl = powerport)        
         except Exception as e:
-            logging.error( str(e))
+            logger.error( str(e))
             return 
-        logging.info("JAI_AD80GE ran its task")
+        logger.info("JAI_AD80GE ran its task")
     
     def respond(self, event):
         pass
@@ -103,19 +105,19 @@ class JAI_AD80GE(Task):
             for sens in self._sensors.itervalues():
                 sens.cam = self._ar.get_camera(sens.mac)
                 
-            logging.info("JAI_AD80GE is powering up")
+            logger.info("JAI_AD80GE is powering up")
             self._started = True       
             
     def stop(self, power_ctl=0):
         if self._started:
             if self._powerctlr is not None:        
                 self._power(power_ctl, False)
-                logging.info("JAI_AD80GE is powering down")        
+                logger.info("JAI_AD80GE is powering down")        
             self._started = False 
             
     def save_image(self, name, imgtype=".tif"):
         if not self._started:
-            logging.error("Camera device must be started before capture")
+            logger.error("Camera device must be started before capture")
             return None
         else:
             for sens in self._sensors.itervalues():
@@ -177,7 +179,7 @@ class JAI_AD80GE(Task):
                **kwargs Named arguments to configure the camera(s)
                    Sensors: dict of name: mac address for each of the sensors on board
         """
-        Task.__init__(self,**kwargs)
+        super(JAI_AD80GE,self).__init__(**kwargs)
         
         sensors = kwargs.get('sensors',())
         self._sensors = dict()
@@ -194,7 +196,7 @@ class JAI_AD80GE(Task):
                 raise TypeError
         except:        
             self._powerctlr = None
-            logging.error("PowerController is not a Relay Object")
+            logger.error("PowerController is not a Relay Object")
 
     def _capture_frame(self, sensor):
         frame = None
@@ -203,7 +205,7 @@ class JAI_AD80GE(Task):
             frame = sensor.cam.get_frame()
             sensor.cam.stop_acquisition()
         else:
-            logging.error("Capture_Frame failed not a valid sensor")
+            logger.error("Capture_Frame failed not a valid sensor")
             raise Exception ("Invalid Sensor Object")
         return frame 
                
@@ -219,7 +221,7 @@ class JAI_AD80GE(Task):
             
 if __name__ == "__main__":
     
-    logging.basicConfig(level=logging.DEBUG)
+    logger.basicConfig(level=logger.DEBUG)
     
     init_args = {
         "sensors":(

@@ -1,0 +1,8 @@
+[Core]
+Name = Test_Task
+Module = test_task
+
+[Documentation]
+Author = Rian Bogle
+Version = 0.1
+Description = Dummy Task implementation for testing 

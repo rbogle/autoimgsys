@@ -44,8 +44,8 @@
     
 """
 
-from ais.task import Task
-from ais.sensors.relay import Relay
+from ais.lib.task import PoweredTask
+from ais.lib.relay import Relay
 import logging
 import time
 import numpy as np
@@ -54,8 +54,9 @@ import traceback
 import datetime
 from pymba import *
 
+logger = logging.getLogger(__name__)
 
-class AVT(Task):
+class AVT(PoweredTask):
     """AVT class provides interfaces for control of generic AVT cameras.
 
         This class relies upon the Vimba SDK and pymba interface for control.
@@ -116,9 +117,9 @@ class AVT(Task):
                 
             self.stop(power_ctl = powerport)        
         except Exception as e:
-            logging.error( str(e))
+            logger.error( str(e))
             return
-        logging.info("%s ran its task" % self.name)
+        logger.info("%s ran its task" % self.name)
         
     def respond(self, event):
         pass
@@ -288,7 +289,7 @@ class AVT(Task):
  
     def __init__(self, **kwargs):
         
-        Task.__init__(self,**kwargs)
+        super(AVT,self).__init__(**kwargs)
         self._vimba =None
         self._camTable = {}
         self._frame = None
@@ -301,7 +302,7 @@ class AVT(Task):
         #powcls = self._powerctlr.__class__()
         if not isinstance(self._powerctlr, Relay):
             self._powerctlr = None
-            logging.error("PowerController is not a Relay Object")
+            logger.error("PowerController is not a Relay Object")
 
 #
     def __del__(self):
@@ -397,7 +398,7 @@ class AVT(Task):
             try:
                 self._powerctlr.set_port(powerport, powerstate)
             except Exception as e:
-                logging.error(str(e))                 
+                logger.error(str(e))                 
         else:        
-            logging.error("No power controller is configured.")
+            logger.error("No power controller is configured.")
             
