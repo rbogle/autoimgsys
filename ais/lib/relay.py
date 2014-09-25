@@ -1,6 +1,6 @@
-from plugin import Plugin
+from plugin import PluginObj
 
-class Relay(Plugin):
+class Relay(PluginObj):
     
     def set_port(self, port, state):
         raise NotImplementedError

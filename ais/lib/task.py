@@ -1,11 +1,11 @@
-from plugin import Plugin
+from plugin import PluginObj
 from relay import Relay
 import logging
 import importlib
 
 logger = logging.getLogger(__name__)
 
-class Task(Plugin):
+class Task(PluginObj):
 
     def __init__(self, **kwargs):
         super(Task,self).__init__()

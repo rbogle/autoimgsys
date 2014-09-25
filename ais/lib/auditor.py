@@ -1,6 +1,6 @@
-from plugin import Plugin
+from plugin import PluginObj
 
-class Auditor(Plugin):
+class Auditor(PluginObj):
     
     def respond(self, event):
         """ Called when object registered as an apscheduler event listener

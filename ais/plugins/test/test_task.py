@@ -23,6 +23,8 @@ class Test_Task(Task):
         
     def __init__(self, **kwargs):
         Task.__init__(self,**kwargs)
+        self.widgetized = True
+        self.viewable = True
         logger.info(self._print_keyword_args("Init called", **kwargs)) 
         
     def _print_keyword_args(self, msg, **kwargs):

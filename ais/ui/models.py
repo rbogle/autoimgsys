@@ -40,58 +40,69 @@ class Schedule(db.Model):
     month = db.Column(db.String(10))
     day = db.Column(db.String(10))
     week = db.Column(db.String(10))
-    dayofweek = db.Column(db.String(10))
+    day_of_week = db.Column(db.String(10))
     hour= db.Column(db.String(10))
     minute = db.Column(db.String(10))
     second = db.Column(db.String(10))
-    startdate = db.Column(db.DateTime)
-    enddate = db.Column(db.DateTime)
-    #jobs = db.relationship('Job')
+    start_date = db.Column(db.DateTime)
+    end_date = db.Column(db.DateTime)
     
+    def get_args(self):
+        args = dict()
+        keepterms = [
+            'year', 'month', 'day', 
+            'week', 'day_of_week', 'hour',
+            'minute', 'second', 'start_date', 'end_date'            
+            ]
+        for k,v in self.__dict__.iteritems():
+            if k in keepterms:            
+                args[k]=v
+        return args
+        
     def __repr__(self):
-        return '<Schedule %s>' % self.name
+        return self.name
     
 class Plugin(db.Model):
+
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100))
-    class_name = db.Column(db.String(100))
-    module_name = db.Column(db.String(100))
-    args = db.Column(db.PickleType)
-    #actions = db.relationship('Action')
-    #reactions = db.relationship('Reaction')
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    category = db.Column(db.String(100))
+    class_name = db.Column(db.String(100), unique=True)
+    
     def __repr__(self):
-        return '<Plugin %s>' % self.name
+        return self.name
         
 class Action(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100))
+    name = db.Column(db.String(100), nullable = False)
     args = db.Column(db.PickleType)
     plugin_id = db.Column(db.Integer, db.ForeignKey('plugin.id'))
     plugin = db.relationship('Plugin')
     
     def __repr__(self):
-        return '<Action %s>' % self.name
+        return self.name
         
 class Auditor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100))
+    name = db.Column(db.String(100),nullable=False, unique=True)
     plugin_id = db.Column(db.Integer, db.ForeignKey('plugin.id'))
     plugin = db.relationship('Plugin')
     event_mask = db.Column(db.Integer)
     enabled = db.Column(db.Boolean)
     
     def __repr__(self):
-        return '<Reaction %s>' % self.name
+        return self.name
         
 class Job(db.Model):
     id = db.Column(db.Integer, primary_key=True)   
-    name = db.Column(db.String(100))
+    name = db.Column(db.String(100), nullable=False, unique=True)
     schedule_id = db.Column(db.Integer, db.ForeignKey('schedule.id'))
     schedule = db.relationship("Schedule")
     action_id = db.Column(db.Integer, db.ForeignKey('action.id'))
     action = db.relationship("Action")
     enabled = db.Column(db.Boolean)
+    running = db.Column(db.Boolean)
     
     def __repr__(self):
-        return '<Job: %s>' % self.name
+        return self.name
     
