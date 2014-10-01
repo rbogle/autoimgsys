@@ -16,11 +16,8 @@ logger = logging.getLogger(__name__)
 class Test_Task(Task):
     
     def run(self, **kwargs):     
-        logger.info(self._print_keyword_args("Test_Task Run called", **kwargs))        
-        
-    def respond(self, event):
-        logger.info("Test_Task Respond called with event: %s" % event) 
-        
+        logger.info(self._print_keyword_args("Test_Task Run called", **kwargs))          
+      
     def __init__(self, **kwargs):
         Task.__init__(self,**kwargs)
         self.widgetized = True

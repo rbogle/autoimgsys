@@ -67,7 +67,8 @@ class Plugin(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     category = db.Column(db.String(100))
-    class_name = db.Column(db.String(100), unique=True)
+    class_name = db.Column(db.String(100))
+    enabled = db.Column(db.Boolean, default=False)
     
     def __repr__(self):
         return self.name

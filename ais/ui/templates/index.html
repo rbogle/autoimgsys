@@ -1,5 +1,20 @@
 {% extends "admin/base.html" %}
-{%block body%}
+{% block head_css %}
+{{super()}}<link href="{{ url_for('static', filename='css/ais.css') }}" rel="stylesheet">
+{% endblock%}
+{% block body%}
+<div id='server_control'>
+<div class='server_status'>
+{% block server_status %}
+{{ server_status }}
+{% endblock %}
+</div>
+<div id='server_ctl_btns'  class='btn-group pull-right'>
+<a class="btn btn-primary" href="/stop"><span class="glyphicon glyphicon-off"></span> Stop</a>
+<a class="btn btn-primary" href="/start"><span class="glyphicon glyphicon-play-circle"></span> Start</a>
+</div>
+</div>
+<div id="widgets">
 <ul class="widgetlist">
 {% for widget in widgets %}
 <li class="widget">
@@ -7,4 +22,5 @@
 </li>
 {%endfor%}
 </ul>
+</div>
 {%endblock%}

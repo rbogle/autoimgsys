@@ -1,0 +1,8 @@
+[Core]
+Name = Test_Listener
+Module = test_listener
+
+[Documentation]
+Author = Rian Bogle
+Version = 0.1
+Description = Dummy Auditor implementation for testing 

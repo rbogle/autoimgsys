@@ -12,23 +12,27 @@ class PluginObj(IPlugin, BaseView):
         
         IPlugin.__init__(self)
         BaseView.__init__(self, **kwargs)
-#                        name=kwargs.get('name', None), 
-#                        category = kwargs.get('category', None),
-#                        endpoint=kwargs.get('endpoint', None),
-#                        name=kwargs.get('name', None),
-#                        name=kwargs.get('name', None),
-#        )
         manager = PluginManagerSingleton.get()
+        
         self.viewable = False
         self.widgetized = False
+        self.enabled = False
+        
         path_items = inspect.getfile(self.__class__).split('/')[-3:-1]
         path = str.join('/',path_items)
-#        logger.debug("Plugin file is: %s" %inspect.getfile(self.__class__))
-#        logger.debug("Plugin path is: %s" %path)
         self.view_template = path+'/index.html'
         self.widget_template = path+'/widget.html'
-        self.app = manager.app
-    
+        
+        try: 
+            getattr(manager, 'app')
+        except Exception,e:
+            pass
+        else:
+            self.app = manager.app
+
+    def is_accessible(self):
+        return self.enabled
+        
     def activate(self):
         super(Plugin, self).activate()
         logger.info("Plugin: %s activated" % self.__class__.__name__)

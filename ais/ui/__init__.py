@@ -6,8 +6,9 @@ import config
 
 flask = Flask('ais')
 flask.template_folder = flask.root_path
+flask.static_folder = flask.root_path+"/ui/static"
 flask.config.from_object(config)
-#flask.config['SQLALCHEMY_DATABASE_URI']=config.DATABASE_PREFIX+config.DATABASE_PATH+config.DATABASE_FILE
+ 
 db = SQLAlchemy(flask)
 
 from views import *
