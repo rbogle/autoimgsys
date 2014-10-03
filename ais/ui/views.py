@@ -26,24 +26,28 @@ class DashboardView(AdminIndexView):
     def register_plugin(self, plugin):
         self.plugins.append(plugin)
  
-    def get_plugins_widgets(self):
+    def get_plugin_widgets(self):
         widgets = list()
         if self.plugins:
             for p in self.plugins:
                 if p.enabled:
-                    widgets.append(Markup(p.widget_view()))
+                    if p.viewable: url = p.url
+                    else: url = None
+                    widgets.append((p.name, Markup(p.widget_view()), url))
         return widgets
         
     @expose('/')
     @expose('/<action>')
     def index(self,action=None):
-        if action=='start':
-            rtn = flask.aisapp.restart()
-        elif action=='stop':
-            rtn = flask.aisapp.stop()         
+        if action=='resume':
+            rtn = flask.aisapp.resume()
+        elif action=='pause':
+            rtn = flask.aisapp.pause()       
+        status,jobs,msg = flask.aisapp.get_status()
+        w = self.get_plugin_widgets()
         return self.render('ui/templates/index.html', 
-                           server_status=flask.aisapp.get_status(), 
-                            widgets=self.get_plugins_widgets())
+                          server_status=status, server_status_msg=msg, 
+                          jobs_scheduled=jobs, widgets=w)
 
         
 class PluginView(ModelView):

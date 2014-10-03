@@ -1,26 +1,60 @@
 {% extends "admin/base.html" %}
+
 {% block head_css %}
 {{super()}}<link href="{{ url_for('static', filename='css/ais.css') }}" rel="stylesheet">
 {% endblock%}
+
 {% block body%}
-<div id='server_control'>
-<div class='server_status'>
-{% block server_status %}
-{{ server_status }}
-{% endblock %}
+<div id='server_ctl' class='panel 
+			{% if server_status %}
+				panel-success
+			{% else %}
+				panel-danger
+			{% endif %}
+'>
+	<div class="panel-heading"><div class="panel-title">Server Status and Control</div></div>
+	<div class="panel-body">
+		<div id='server_status' class='pull-left'>
+			{% if server_status %}
+				<span class="glyphicon glyphicon-ok"></span>
+				<span class="status_msg">&nbsp;{{ server_status_msg }}</span>
+				<span id="sched_jobs" class="label label-success" data-toggle="tooltip" data-placement="right" Title="Jobs Scheduled">{{jobs_scheduled}}</span>
+			{% else %}
+				<span class="glyphicon glyphicon-remove"></span>
+				<span class="status_msg">&nbsp;{{ server_status_msg }}</span>
+				<span id="sched_jobs" class="label label-warning" data-toggle="tooltip" data-placement="right" Title="Jobs Enabled">{{jobs_scheduled}}</span>
+			{% endif %}		
+		</div>
+		<div id='server_ctl_btns'  class='pull-right'>
+			{% if server_status %}
+				<a class="btn btn-primary" href="/pause"><span class="glyphicon glyphicon-off"></span> Pause</a>
+			{% else %}
+				<a class="btn btn-primary" href="/resume"><span class="glyphicon glyphicon-play-circle"></span> Resume</a>
+			{% endif %}	
+		</div>
+	</div>
 </div>
-<div id='server_ctl_btns'  class='btn-group pull-right'>
-<a class="btn btn-primary" href="/stop"><span class="glyphicon glyphicon-off"></span> Stop</a>
-<a class="btn btn-primary" href="/start"><span class="glyphicon glyphicon-play-circle"></span> Start</a>
-</div>
-</div>
-<div id="widgets">
-<ul class="widgetlist">
-{% for widget in widgets %}
-<li class="widget">
-{{widget}}
-</li>
-{%endfor%}
-</ul>
+<div id="widgets" class="container">
+	{% for (name,widget,url) in widgets %}
+	<div class="widget panel panel-default">
+		<div class="panel-heading">
+			<div class='panel-title'>{{name}}</div>
+		</div>
+		<div class="panel-body">
+			{{widget}}
+		</div>
+		{%if url %}
+		<div class="panel-footer">
+			See <a href="{{url}}">{{name}} Plugin Page</a>
+		</div>
+		{% endif %}
+	</div>
+	{%endfor%}
 </div>
 {%endblock%}
+{% block tail %}
+{{super()}}
+<script>
+	$('#sched_jobs').tooltip()
+</script>
+{% endblock %}

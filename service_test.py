@@ -21,28 +21,65 @@ logger = logging.getLogger(__name__)
 
 class AISApp(object):
     
-    def start(self):
-        if self.scheduler is not None:
-            self.scheduler.start() 
-            self.status = "Scheduler is Running"
-        if self.flask is not None:
-            self.flask.run()
+    def run(self):
+        #finish startup of components
+        #scheduler comes first flask must be last!
 
-            
-    def stop(self):
-        logger.debug("AISApp stop called")
+        self.flask.run()
     
-    def restart(self):
-        logger.debug("AISApp restart called")
+    def pause(self):
+        logger.debug("AISApp pause called")
+        if self.running:
+            self.pause_jobs()
+            self.running = False
+            
+    def resume(self):
+        logger.debug("AISApp resume called")
+        if not self.running:
+            self.resume_jobs()
+            self.running = True
     
     def get_status(self):
-        return self.status
+        if self.running:
+            msg = "Scheduler is Running"
+        else:
+            msg = "Scheduler is Paused"
+        return (self.running, self.get_num_active_jobs(), msg)
         
-    
+    def get_num_active_jobs(self):     
+        if self.running: #get jobs scheduled
+            return len(self.scheduler.get_jobs())
+        else: #get enabled jobs from db    
+            return len(Job.query.filter_by(enabled=True).all())
+            
+    def pause_jobs(self):
+        '''
+            iterates through aps joblist and calls pause, 
+            sets running status in db.       
+        '''
+        aps_jobs = self.scheduler.get_jobs()
+        for apsjob in aps_jobs:
+            apsjob.pause()
+            Job.query.get(int(apsjob.id)).running=False
+        db.session.commit()
+
+        
+    def resume_jobs(self):
+        '''
+            iterates through aps joblist and calls resume, 
+            sets running status in db.
+        '''        
+        aps_jobs = self.scheduler.get_jobs()
+        for apsjob in aps_jobs:
+            apsjob.resume()
+            Job.query.get(int(apsjob.id)).running=True
+        db.session.commit()
+
+            
     def sync_plugin_status(self, name, status):
         '''
             Pick up any change in UI for plugin.enabled and sync to 
-            actual plugin object. 
+            actual plugin object. Called from PluginView.updateModel.
         '''
         pl = self.plugin_manager.getAllPlugins()
         for pi in pl:
@@ -54,8 +91,7 @@ class AISApp(object):
             sync_plugin_db crosschecks loaded plugins with list of plugins in DB
             and adds any missing plugins, and removes and unloaded plugins. 
         '''
-#        Plugin.query.delete()
-#        db.session.commit()
+
         for cat in self.plugin_manager.getCategories():  
             
             pilist = self.plugin_manager.getPluginsOfCategory(cat)
@@ -118,7 +154,7 @@ class AISApp(object):
         #clean listener stack, safest way to dump listeners
         with self.scheduler._listeners_lock:
             self.scheduler._listeners=list()
-        #no register all enabled listeners  
+        #now register all enabled listeners  
         for listener in listeners:
             if listener.enabled:
                 self.register_listener(listener)        
@@ -128,6 +164,7 @@ class AISApp(object):
         '''
             schedule_job takes a db.model Job and schedules corresponding aps job 
             using Schedule, Job and Plugin info to configure plugin and job. 
+            aps jobs are not duplicated just overwritten. 
         '''
         task_name = job.action.plugin.name
         task_args = job.action.args
@@ -142,6 +179,8 @@ class AISApp(object):
                             id=str(job.id), 
                             name=job.name, 
                             replace_existing=True,
+                            coalesce = True,
+                            max_instances=1,
                             **trigger_args
                             )
         except:
@@ -150,6 +189,7 @@ class AISApp(object):
         else:
             logger.info("Job %s has been scheduled" %job.id)
             job.running =True
+            self.running = True
                                
     def unschedule_job(self, job):
         '''
@@ -237,9 +277,11 @@ class AISApp(object):
         plugin_manager.app = self #pass app ref back to plugins.
         plugin_manager.collectPlugins()
 
-        #add apscheduler
+        #add apscheduler and start it. 
         self.scheduler = BackgroundScheduler()
-
+        self.scheduler.start()
+        self.running = True
+        
         #setup databse defaults if it doesn't exist
         if not os.path.exists(self.database_file):
             logger.info("Initializing DB")
@@ -268,6 +310,7 @@ class AISApp(object):
         #find plugins with views and widgets available:
         for pi in plugin_manager.getAllPlugins():
             po = pi.plugin_object
+            po.name = pi.name
             logger.debug("Plugin found: %s" %pi.name)
             if po.widgetized:
                 dv.register_plugin(po)
@@ -281,13 +324,12 @@ class AISApp(object):
         self.ui.add_view(PluginView(Plugin,db.session,name='Plugins', category='Admin'))
         self.ui.add_view(ActionView(Action,db.session,name='Actions', category='Admin'))
         self.ui.add_view(sqla.ModelView(Schedule,db.session, name = 'Schedules',category='Admin'))
+        
 
 if __name__=='__main__':
     #logging config
     logging.basicConfig(level=logging.DEBUG)
     #setup and start the app
     app = AISApp()    
-
-    app.start()
-    
+    app.run()
  

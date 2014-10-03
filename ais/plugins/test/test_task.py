@@ -9,15 +9,17 @@
 #   <author> Rian Bogle </author>
 
 from ais.lib.task import Task
-import logging
+import logging, datetime
 
 logger = logging.getLogger(__name__)
 
 class Test_Task(Task):
     
     def run(self, **kwargs):     
-        logger.info(self._print_keyword_args("Test_Task Run called", **kwargs))          
-      
+        self.last_run = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')	
+                
+        logger.info(self._print_keyword_args("Test_Task Run called", **kwargs)) 
+              
     def __init__(self, **kwargs):
         Task.__init__(self,**kwargs)
         self.widgetized = True

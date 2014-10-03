@@ -22,6 +22,7 @@ class PluginObj(IPlugin, BaseView):
         path = str.join('/',path_items)
         self.view_template = path+'/index.html'
         self.widget_template = path+'/widget.html'
+        self.url="/"+self.__class__.__name__.lower()+"/"
         
         try: 
             getattr(manager, 'app')
