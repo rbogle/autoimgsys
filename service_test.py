@@ -172,7 +172,7 @@ class AISApp(object):
         
         task_obj = self.plugin_manager.getPluginByName(task_name,'Task').plugin_object
         try:
-            self.scheduler.add_job(
+            aps_job =self.scheduler.add_job(
                             task_obj.run, 
                             'cron', 
                             kwargs = task_args, 
@@ -186,10 +186,14 @@ class AISApp(object):
         except:
             logger.info("Job %s could not be scheduled" %job.id)
             job.running = False
+            return
+        logger.info("Job %s has been scheduled" %job.id)
+        if not self.running:
+            # The scheduler is in pause state so pause this job too
+            job.running = False
+            aps_job.pause()
         else:
-            logger.info("Job %s has been scheduled" %job.id)
-            job.running =True
-            self.running = True
+            job.running = True
                                
     def unschedule_job(self, job):
         '''

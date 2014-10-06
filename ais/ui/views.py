@@ -1,7 +1,7 @@
 from flask.ext.admin.contrib.sqla import ModelView
 from flask.ext.admin.base import *
 from flask.ext.admin.form import rules
-from flask import Markup
+from flask import Markup,redirect
 from wtforms.fields import  TextAreaField, SelectMultipleField
 import xml.etree.ElementTree as ET
 
@@ -42,7 +42,9 @@ class DashboardView(AdminIndexView):
         if action=='resume':
             rtn = flask.aisapp.resume()
         elif action=='pause':
-            rtn = flask.aisapp.pause()       
+            rtn = flask.aisapp.pause()
+        elif action is not None:
+            return redirect('/')
         status,jobs,msg = flask.aisapp.get_status()
         w = self.get_plugin_widgets()
         return self.render('ui/templates/index.html', 
