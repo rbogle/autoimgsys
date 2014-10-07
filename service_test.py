@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 class AISApp(object):
     
     def run(self):
-        #finish startup of components
-        #scheduler comes first flask must be last!
-
-        self.flask.run()
+        #fset host to 0.0.0.0 to show interface on all ips
+        # need to setup ngix or apache and use wgsi
+        # flask must be last!
+        self.flask.run(host="0.0.0.0")
     
     def pause(self):
         logger.debug("AISApp pause called")
