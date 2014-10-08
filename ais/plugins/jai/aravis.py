@@ -258,7 +258,7 @@ class Stream(object):
             pixelformat = np.uint16
         im = np.frombuffer(b, dtype=pixelformat, count=buf.contents.height * buf.contents.width)
         im.shape = (buf.contents.height, buf.contents.width) 
-        logging.debug("Image array shape: %s" % (im.shape,))
+        #logging.debug("Image array shape: %s" % (im.shape,))
         im = im.copy()
         self.push_buffer(buf)
         return im

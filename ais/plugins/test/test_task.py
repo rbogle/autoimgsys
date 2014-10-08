@@ -16,15 +16,18 @@ logger = logging.getLogger(__name__)
 class Test_Task(Task):
     
     def run(self, **kwargs):     
-        self.last_run = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')	
-                
+        self.last_run = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')	              
         logger.info(self._print_keyword_args("Test_Task Run called", **kwargs)) 
-              
+    
+    def configure(self, **kwargs):
+        logger.debug(self._print_keyword_args("Init called", **kwargs)) 
+        self.initialized = True
+        
     def __init__(self, **kwargs):
         Task.__init__(self,**kwargs)
         self.widgetized = True
         self.viewable = True
-        logger.info(self._print_keyword_args("Init called", **kwargs)) 
+        logger.debug(self._print_keyword_args("Init called", **kwargs)) 
         
     def _print_keyword_args(self, msg, **kwargs):
         # kwargs is a dict of the keyword args passed to the function

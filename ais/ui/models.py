@@ -69,6 +69,7 @@ class Plugin(db.Model):
     category = db.Column(db.String(100))
     class_name = db.Column(db.String(100))
     enabled = db.Column(db.Boolean, default=False)
+    args = db.Column(db.PickleType)
     
     def __repr__(self):
         return self.name
@@ -76,7 +77,8 @@ class Plugin(db.Model):
 class Action(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable = False)
-    args = db.Column(db.PickleType)
+    config_id = db.Column(db.Integer, db.ForeignKey('config.id'))
+    config = db.relationship('Config')
     plugin_id = db.Column(db.Integer, db.ForeignKey('plugin.id'))
     plugin = db.relationship('Plugin')
     
@@ -106,4 +108,13 @@ class Job(db.Model):
     
     def __repr__(self):
         return self.name
+        
+class Config(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    role = db.Column(db.Enum('Initalize', 'Runtime', name='config_roles'))
+    plugin = db.Column(db.String(100))
+    args = db.Column(db.PickleType)
     
+    def __repr__(self):
+        return self.name

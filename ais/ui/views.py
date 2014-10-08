@@ -31,8 +31,7 @@ class DashboardView(AdminIndexView):
         if self.plugins:
             for p in self.plugins:
                 if p.enabled:
-                    if p.viewable: url = p.url
-                    else: url = None
+                    url= (p.url if p.viewable else None)
                     widgets.append((p.name, Markup(p.widget_view()), url))
         return widgets
         
@@ -70,7 +69,9 @@ class PluginView(ModelView):
     def update_model(self, form, plugin):
         logger.debug("PluginView on_model_change called")
         success = super(PluginView, self).update_model(form, plugin)
-        flask.aisapp.sync_plugin_status(plugin.name, plugin.enabled) 
+        flask.aisapp.sync_plugin_status(plugin.name, plugin.enabled)
+        if plugin.enabled and plugin.category=="Task": 
+            flask.aisapp.initalize_plugin(plugin.name)
         return success  
 
 def event_mask_formatter( view, context, model, event_mask):
@@ -194,11 +195,32 @@ class JobView(ModelView):
 class ActionView(ModelView):
 
     '''
-        ActionView is used for Action model, has functionality to validate
+        ActionView is used for Action model, 
+        We  filter plugins in select form to only those listed as tasks
+    '''
+    column_list = ('name', 'plugin', 'config')
+    form_create_rules = ('name', 'plugin', 'config')
+    form_edit_rules = ('name', 'plugin', 'config')
+    
+    form_args = dict (
+       plugin = dict( #filter down select list to just Task plugins
+           query_factory= lambda: db.session.query(Plugin).filter_by(category="Task", enabled=True),
+           allow_blank = False
+       ),
+       config = dict(
+           query_factory= lambda: db.session.query(Config).filter_by(role="Runtime")
+       )
+   )        
+
+class ConfigView(ModelView):
+    '''
+        ConfigView is used for Config model, has functionality to validate
         pickletype field called args. We safely eval the form input to 
         convert string to dict and rename the args field to Config.
-        We also filter plugins in select form to only those listed as tasks
-    '''
+    '''    
+    column_list = ('name', 'plugin', 'role' , 'args')
+    form_create_rules = ('name', 'plugin', 'role' , 'args')
+    form_edit_rules = ('name', 'plugin', 'role' , 'args')    
     
     def on_model_change(self, form, model, is_created):
         '''
@@ -211,10 +233,3 @@ class ActionView(ModelView):
     form_extra_fields = {
         'args': TextAreaField("Config")
     }
-
-    form_args = dict (
-       plugin = dict( #filter down select list to just Task plugins
-           query_factory= lambda: db.session.query(Plugin).filter_by(category="Task", enabled=True),
-           allow_blank = False
-       )
-   )        

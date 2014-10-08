@@ -10,15 +10,38 @@ class Task(PluginObj):
     def __init__(self, **kwargs):
         super(Task,self).__init__()
         vars(self).update(kwargs)
-    
+        self.initialized = False
+        
     def configure(self, **kwargs):
-        vars(self).update(kwargs)
-    
-    def run(self, **kwargs):
-        """ Called when registered as a timed event
+        """ 
+            Called when scheduled as a timed event
         """
         raise NotImplementedError
-
+    
+    def run(self, **kwargs):
+        """ 
+            Called when run as a timed event
+        """
+        raise NotImplementedError
+    
+    def get_config_properties(self):
+        """ 
+            Called to confirm valid config elements
+            should return list of  tuples. Each tuple should be
+            (property name, pretty name, description)
+            These will be used in the ui
+        """
+        raise NotImplementedError
+        
+    def get_run_properties(self):
+        """ 
+            Called to confirm valid config elements
+            should return list of  tuples. Each tuple should be
+            (property name, pretty name, description)
+            These will be used in the ui
+        """
+        raise NotImplementedError
+        
     def _marshal_obj(self, obj_name, **kwargs):
    
         obj_args = kwargs.get(obj_name, {});
@@ -47,3 +70,16 @@ class PoweredTask(Task):
             
     def set_relay_delay(self, delay_secs):
             self._powerdelay = delay_secs    
+    
+    def set_relay_port(self, port):
+            self._powerport = port
+        
+    def _power(self, powerstate=False):
+        
+        if self._powerctlr is not None:
+            try:
+                self._powerctlr.set_port(self._powerport, powerstate)
+            except Exception as e:
+                logger.error(str(e))                 
+        else:        
+            logger.error("No power controller is configured.")

@@ -74,8 +74,29 @@ class AISApp(object):
             apsjob.resume()
             Job.query.get(int(apsjob.id)).running=True
         db.session.commit()
-
-            
+    
+    def initalize_plugins(self):
+        logger.debug("Initializing enabled plugins....")
+        pdb = Plugin.query.filter_by(category='Task',enabled=True).all()
+        for p in pdb:
+            self.initalize_plugin(p.name)
+        
+    def initalize_plugin(self, name):
+        logger.debug("Initializing plugin %s"%name)
+        pi = self.plugin_manager.getPluginByName(name, 'Task')
+        if pi is not None:
+            po = pi.plugin_object
+            logger.debug("Found plugin...")
+            if not po.initialized:
+                #get initalize config and pass to
+                logger.debug("Plugin not initalized")
+                cfg = Config.query.filter_by(plugin=name, role="Initalize").first()
+                if cfg is not None:
+                    logger.debug("Config args: %s"%(cfg.args))
+                    po.configure(**cfg.args)
+            else:
+                logger.debug("Plugin already initalized")
+        
     def sync_plugin_status(self, name, status):
         '''
             Pick up any change in UI for plugin.enabled and sync to 
@@ -167,27 +188,33 @@ class AISApp(object):
             aps jobs are not duplicated just overwritten. 
         '''
         task_name = job.action.plugin.name
-        task_args = job.action.args
+        task_args = job.action.config.args
         trigger_args = job.schedule.get_args()
         
         task_obj = self.plugin_manager.getPluginByName(task_name,'Task').plugin_object
-        try:
-            aps_job =self.scheduler.add_job(
-                            task_obj.run, 
-                            'cron', 
-                            kwargs = task_args, 
-                            id=str(job.id), 
-                            name=job.name, 
-                            replace_existing=True,
-                            coalesce = True,
-                            max_instances=1,
-                            **trigger_args
-                            )
-        except:
-            logger.info("Job %s could not be scheduled" %job.id)
-            job.running = False
-            return
-        logger.info("Job %s has been scheduled" %job.id)
+
+        aps_job = self.scheduler.get_job(str(job.id))
+        
+        if aps_job is None:    
+            try:   
+                aps_job =self.scheduler.add_job(
+                                task_obj.run, 
+                                'cron', 
+                                kwargs = task_args, 
+                                id=str(job.id), 
+                                name=job.name, 
+                                replace_existing=True,
+                                coalesce = True,
+                                max_instances=1,
+                                **trigger_args
+                                )
+            
+            except:
+                logger.info("Job %s could not be scheduled" %job.id)
+                job.running = False
+                return
+            logger.info("Job %s has been scheduled" %job.id)
+            
         if not self.running:
             # The scheduler is in pause state so pause this job too
             job.running = False
@@ -241,7 +268,7 @@ class AISApp(object):
                 
     
     
-    def initialize_db(self):
+    def initalize_db(self):
         """
         Populate empty db with default entries.
         """
@@ -251,7 +278,11 @@ class AISApp(object):
         # test_user = User(login="test", password="test")
         test_user = User(login="test", password="test")
         self.db.session.add(test_user)
-        self.db.session.add(Action(name='Run Test', args={'arg1' : 'first arg', 'arg2' : 'second arg'}))        
+        cr = Config(name='Run Config', plugin='Test Task', role="Runtime", args={'arg1':"first arg", 'arg2':"second arg"})
+        ci = Config(name='Task Init', plugin='Test Task', role="Initalize", args={'arg1':"primata arg", 'arg2':"secunda arg"})
+        self.db.session.add(cr)
+        self.db.session.add(ci)
+        self.db.session.add(Action(name='Run Test',config=cr))        
         self.db.session.add(Schedule(name='Every 2 Minutes', minute='*/2'))
         self.db.session.commit()
         return  
@@ -289,10 +320,12 @@ class AISApp(object):
         #setup databse defaults if it doesn't exist
         if not os.path.exists(self.database_file):
             logger.info("Initializing DB")
-            self.initialize_db()                 
+            self.initalize_db()                 
               
         #cross check with DB to see if plugins are avail in ui
         self.sync_plugin_db()
+        self.initalize_plugins()
+        
         #examine db for jobs configured and enables and load them into APS
         self.schedule_jobs_from_db()
         self.register_listeners_from_db()
@@ -327,6 +360,7 @@ class AISApp(object):
         self.ui.add_view(sqla.ModelView(User,db.session, category='Admin')) 
         self.ui.add_view(PluginView(Plugin,db.session,name='Plugins', category='Admin'))
         self.ui.add_view(ActionView(Action,db.session,name='Actions', category='Admin'))
+        self.ui.add_view(ConfigView(Config,db.session,name='Configs', category='Admin'))
         self.ui.add_view(sqla.ModelView(Schedule,db.session, name = 'Schedules',category='Admin'))
         
 

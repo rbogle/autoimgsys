@@ -1,8 +1,10 @@
 {% extends "admin/base.html" %}
-
+{% block head %}
+<META HTTP-EQUIV="refresh" CONTENT="60">
+{% endblock %}
 {% block head_css %}
 {{super()}}<link href="{{ url_for('static', filename='css/ais.css') }}" rel="stylesheet">
-{% endblock%}
+{% endblock %}
 
 {% block body%}
 <div id='server_ctl' class='panel 
@@ -18,11 +20,11 @@
 			{% if server_status %}
 				<span class="glyphicon glyphicon-ok"></span>
 				<span class="status_msg">&nbsp;{{ server_status_msg }}</span>
-				<span id="sched_jobs" class="label label-success" data-toggle="tooltip" data-placement="right" Title="Jobs Scheduled">{{jobs_scheduled}}</span>
+				<a href="/job" id="sched_jobs" class="label label-success" data-toggle="tooltip" data-placement="right" Title="Jobs Scheduled">{{jobs_scheduled}}</a>
 			{% else %}
 				<span class="glyphicon glyphicon-remove"></span>
 				<span class="status_msg">&nbsp;{{ server_status_msg }}</span>
-				<span id="sched_jobs" class="label label-warning" data-toggle="tooltip" data-placement="right" Title="Jobs Enabled">{{jobs_scheduled}}</span>
+				<a href="/job" id="sched_jobs" class="label label-warning" data-toggle="tooltip" data-placement="right" Title="Jobs Enabled">{{jobs_scheduled}}</a>
 			{% endif %}		
 		</div>
 		<div id='server_ctl_btns'  class='pull-right'>

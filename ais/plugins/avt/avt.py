@@ -77,6 +77,7 @@ class AVT(PoweredTask):
                     date_pattern (opt) : passed as strftime format
                                         used for filename YYYY-MM-DDTHHMMSS
                     file_name (opt) : Base path and name for filename ./img
+                    image_type (opt) : Format to save image as. Tiff default
                     timeout (opt) : millseconds to wait for image return
                     sequence (opt): list of dictionaries with the following:
                                     each dict given will be a numbered image
@@ -92,17 +93,23 @@ class AVT(PoweredTask):
         try: # we dont want to crash the ais_service so just log errors
            
            #we need to start camerasys as this is task callback
-            powerport= kwargs.get("power_port", 0)
+            
             if not self._started:   
-                self.start(power_ctl=powerport)
+                self.start()
                 
             datepattern = kwargs.get("date_pattern", "%Y-%m-%dT%H%M%S" )    
-            filename = self._genFilename(kwargs.get('file_name', "./img"), 
+            filename = self._genFilename(kwargs.get('file_name', "/tmp/img_"), 
                                          datepattern)
             imgtype = kwargs.get("image_type", 'tif')
             timeout = kwargs.get("timeout", 5000)
             sequence = kwargs.get('sequence', None)
-            
+            pxfmt = kwargs.get('pixel_format', '')
+            if pxfmt not in ('Mono8','BayerGB8'):
+                pxfmt = 'BayerGB12'
+                self._bit_depth = np.uint16
+            else:
+                self._bit_depth = np.uint8             
+            self.setProperty("PixelFormat", pxfmt)
             #do we have a sequence to take or one-shot
             if sequence is not None:
                 if isinstance(sequence,list):
@@ -115,19 +122,65 @@ class AVT(PoweredTask):
                 self._configShot(**kwargs)
                 self.saveImage(filename,imgtype,timeout)
                 
-            self.stop(power_ctl = powerport)        
+            self.stop()
+            
         except Exception as e:
             logger.error( str(e))
             return
         logger.info("%s ran its task" % self.name)
         
-    def respond(self, event):
-        pass
-    
+    def configure(self, **kwargs):
+        self._powerdelay = kwargs.get('relay_delay', 15)
+        self._powerport = kwargs.get('relay_port', 0)
+        relay_name = kwargs.get('relay_plugin', None)        
+        if relay_name is not None:
+            self._powerctlr = self.manager.getPluginByName(relay_name, 'Relay').plugin_object
+        if not isinstance(self._powerctlr, Relay):
+            self._powerctlr = None
+            logger.error("PowerController is not a Relay Object")          
+        self.initalized = True   
+        
+    def get_configure_properties(self):
+        return [
+            ('relay_name',"Relay Plugin" ,"Relay Plugin to use for power control."),
+            ('relay_delay', "Delay (Sec)", "Number of seconds to wait after enabling Relay."), 
+            ('relay_port',"Port Number", "Port on Relay to toggle for control.")
+        ]
+    def get_run_properties(self):    
+        '''
+                    date_pattern (opt) : passed as strftime format
+                                        used for filename YYYY-MM-DDTHHMMSS
+                    file_name (opt) : Base path and name for filename ./img
+                    image_type (opt) : Format to save image as. Tiff default
+                    timeout (opt) : millseconds to wait for image return
+                    sequence (opt): list of dictionaries with the following:
+                                    each dict given will be a numbered image
+                    ExposureTimeAbs (opt) : image exposure time in uSec
+                                            125000 default
+                    Gain (opt) : 0-26db gain integer steps 0 default
+                    Height (opt) : requested image height max default
+                    Width (opt) : requested image width max default
+                    OffsetX (opt) : requested image x offset 0 default
+                    OffsetY (opt) : requested image y offest 0 default
+        '''
+        return [
+            ("date_pattern","Date Format","Used in filenaming, Default is YYYY-MM-DDTHHMMSS."),
+            ("file_name","File Location", "Base Path and prefix for filenaming. Default: /tmp/img_."),
+            ("image_type","Image Format" ,"Image format to save as. Default: tif." ),
+            ("timeout","Timeout" ,"Milliseconds to wait for captur.e" ),
+            ("sequence","Sequence" , "A set of settings to capture a sequence of images." ), 
+            ("exposure_time","Exposure Time","uSec of Exposure. Default: 125000."),
+            ("gain","Gain" ,"0-26dB gain, Default: 0." ),
+            ("height","Height" ,"Image height, Default: Max." ),
+            ("width","Width" ,"Image width, Default: Max." ),
+            ("offset_x","OffsetX" ,"Image offset in x pixels. Default 0px." ),
+            ("offset_y","OffsetY" ,"Image offset in y pixels. Default 0px." )     
+        ]
+
     def start(self, camera_id=-1, properties={}, power_ctl=0):
         if not self._started: 
             if self._powerctlr is not None:        
-                self._power(power_ctl, True)
+                self._power(True)
                 time.sleep(self._powerdelay)
                
             self._setupVimba()
@@ -163,10 +216,14 @@ class AVT(PoweredTask):
     
             # TODO: FIX to get valid modes as prop and adj 
             #       img capture to approp bit depth
-            if properties.get("mode", "RGB") == 'gray':
-                self.setProperty("PixelFormat", "Mono8")
+            pxfmt = properties.get('pixel_format', '')
+            if pxfmt not in ('Mono8','BayerGB8'):
+                pxfmt = 'BayerGB12'
+                self._bit_depth = np.uint16
             else:
-                self.setProperty("PixelFormat", "BayerGB12")
+                self._bit_depth = np.uint8
+                
+            self.setProperty("PixelFormat", pxfmt)
     
             #give some compatablity with other cameras
             if properties.get("mode", ""):
@@ -203,21 +260,28 @@ class AVT(PoweredTask):
                 print "Vimba exception %d: %s" % (ve.errorCode, ve.message)
                 
             if self._powerctlr is not None:        
-                self._power(power_ctl, False)
+                self._power(False)
             
             self._started = False    
         
 
    
     def saveImage(self, name, imgtype="tif", timeout=5000):
-        
+       
         data = self._captureFrame(timeout)        
         # Bayer_GB2BGR  used to get acceptable 3-band 16-bit format
-        # for cv2.imwrite. this is easiest lib/method to keep 16bit format                             
-        bgr = cv2.cvtColor(data, cv2.COLOR_BAYER_GB2BGR)
+        # for cv2.imwrite. this is easiest lib/method to keep 16bit format 
+        pxfmt = self.getProperty("PixelFormat")
+        logger.debug("AVT capturing as: %s"%pxfmt)  
+        
+        if "BayerGB" in pxfmt:                  
+            rgb = cv2.cvtColor(data, cv2.COLOR_BAYER_GB2RGB)
+        else:
+            rgb = data
         #TODO test for file extension first?
         name += "." + imgtype
-        cv2.imwrite(name, bgr)           
+        logger.debug("AVT capturing and saving image as: %s"%name)
+        cv2.imwrite(name, rgb)           
           
     def listAllCameras(self):
         """
@@ -297,8 +361,10 @@ class AVT(PoweredTask):
         self._properties = {}
         self._camera = None
         self._started = False
-        self._powerdelay = kwargs.get('power_delay', 5)
+        self._powerdelay = kwargs.get('power_delay', 15)
         self._powerctlr = self._marshal_obj('power_ctlr', **kwargs)
+        self._powerport = kwargs.get('power_port', 0)
+        self._bit_depth = np.uint16
         #powcls = self._powerctlr.__class__()
         if not isinstance(self._powerctlr, Relay):
             self._powerctlr = None
@@ -349,7 +415,7 @@ class AVT(PoweredTask):
 
             imgData = f.getBufferIntData()
             moreUsefulImgData = np.ndarray(buffer = imgData,
-                                           dtype = np.uint16,
+                                           dtype = self._bit_depth,
                                            shape = (f.height, f.width, 1))
             c.endCapture()
             return moreUsefulImgData
@@ -392,13 +458,33 @@ class AVT(PoweredTask):
         else:
             raise(Exception("AVT Camera is not started."))
     
-    def _power(self, powerport=0, powerstate=False):
-        
-        if self._powerctlr is not None:
-            try:
-                self._powerctlr.set_port(powerport, powerstate)
-            except Exception as e:
-                logger.error(str(e))                 
-        else:        
-            logger.error("No power controller is configured.")
+if __name__ == "__main__":
+    
+    logging.basicConfig(level=logging.DEBUG)
+    
+    init_args ={}   
+    
+    run_args = {
+
+        'file_name': '~/Pictures/avt_tests/hdr',
+        'pixel_format': 'BayerGB8',
+#        'exposure_time': 1000000
+        'sequence':[
+            {'exposure_time': 977},
+            {'exposure_time': 1953},
+            {'exposure_time': 3906},
+            {'exposure_time': 7813},
+            {'exposure_time': 15625},
+            {'exposure_time': 31250},
+            {'exposure_time': 62500},
+            {'exposure_time': 125000},
+            {'exposure_time': 250000},
+            {'exposure_time': 500000},
+            {'exposure_time': 1000000}
+        ]
+    }    
+    
+    cam = AVT(**init_args)        
+    
+    cam.run(**run_args)
             

@@ -63,10 +63,10 @@ class JAI_AD80GE(PoweredTask):
            #we need to start camerasys as this is task callback
             powerport= kwargs.get("power_port", 0)
             if not self._started:   
-                self.start(power_ctl=powerport)
+                self.start()
             
             datepattern = kwargs.get("date_pattern", "%Y-%m-%dT%H%M%S" )    
-            filename = self._gen_filename(kwargs.get('file_name', "./img"), 
+            filename = self._gen_filename(kwargs.get('file_name', "/tmp/img"), 
                                  datepattern)
             imgtype = kwargs.get("image_type", 'tif')
             sequence = kwargs.get('sequence', None)
@@ -86,19 +86,70 @@ class JAI_AD80GE(PoweredTask):
                 self.configure_shot(**kwargs)
                 self.save_image(filename,imgtype)
     
-            self.stop(power_ctl = powerport)        
+            self.stop()        
         except Exception as e:
             logger.error( str(e))
             return 
         logger.info("JAI_AD80GE ran its task")
-    
-    def respond(self, event):
-        pass
-    
-    def start(self, power_ctl=0):       
+        
+    def configure(self, **kwargs):
+        sensors = kwargs.get('sensors',())
+        self._sensors = dict()
+        for s in sensors :
+            name =s.get("name", None)
+            self._sensors[name] = Sensor(**s)
+        self._powerdelay = kwargs.get('relay_delay', 15)
+        self._powerport = kwargs.get('relay_port', 0)
+        relay_name = kwargs.get('relay_plugin', None)        
+        if relay_name is not None:
+            self._powerctlr = self.manager.getPluginByName(relay_name, 'Relay').plugin_object
+        if not isinstance(self._powerctlr, Relay):
+            self._powerctlr = None
+            logger.error("PowerController is not a Relay Object")          
+        self.initalized = True   
+        
+    def get_configure_properties(self):
+        return [
+            ('sensors',"Sensor List" ,"List with {name=sensorname, mac=###}"),
+            ('relay_name',"Relay Plugin" ,"Relay Plugin to use for power control."),
+            ('relay_delay', "Delay (Sec)", "Number of seconds to wait after enabling Relay."), 
+            ('relay_port',"Port Number", "Port on Relay to toggle for control.")
+        ]
+    def get_run_properties(self):    
+        '''
+                    date_pattern (opt) : passed as strftime format
+                                        used for filename YYYY-MM-DDTHHMMSS
+                    file_name (opt) : Base path and name for filename ./img
+                    image_type (opt) : Format to save image as. Tiff default
+                    pixelformats (opt) : list of image format to capture for each sensor
+                    sequence (opt): list of dictionaries with the following:
+                                    each dict given will be a numbered image
+                    ExposureTimeAbs (opt) : image exposure time in uSec
+                                            125000 default
+                    Gain (opt) : 0-26db gain integer steps 0 default
+                    Height (opt) : requested image height max default
+                    Width (opt) : requested image width max default
+                    OffsetX (opt) : requested image x offset 0 default
+                    OffsetY (opt) : requested image y offest 0 default
+        '''
+        return [
+            ("date_pattern","Date Format","Used in filenaming, Default is YYYY-MM-DDTHHMMSS."),
+            ("file_name","File Location", "Base Path and prefix for filenaming. Default: /tmp/img_."),
+            ("image_type","Image Format" ,"Image format to save as. Default: tif." ),
+            ("pixel_formats","Pixel Formats" ,"List of image formats for each sensor: { name=sensor, pixel_format=format}" ),
+            ("sequence","Sequence" , "A set of settings to capture a sequence of images." ), 
+            ("exposure_time","Exposure Time","uSec of Exposure. Default: 125000."),
+            ("gain","Gain" ,"0-26dB gain, Default: 0." ),
+            ("height","Height" ,"Image height, Default: Max." ),
+            ("width","Width" ,"Image width, Default: Max." ),
+            ("offset_x","OffsetX" ,"Image offset in x pixels. Default 0px." ),
+            ("offset_y","OffsetY" ,"Image offset in y pixels. Default 0px." )     
+        ]
+   
+    def start(self):       
         if not self._started: 
             if self._powerctlr is not None:        
-                self._power(power_ctl, True)
+                self._power(True)
                 time.sleep(self._powerdelay)
             
             self._ar = Aravis()
@@ -108,10 +159,10 @@ class JAI_AD80GE(PoweredTask):
             logger.info("JAI_AD80GE is powering up")
             self._started = True       
             
-    def stop(self, power_ctl=0):
+    def stop(self):
         if self._started:
             if self._powerctlr is not None:        
-                self._power(power_ctl, False)
+                self._power( False)
                 logger.info("JAI_AD80GE is powering down")        
             self._started = False 
             
@@ -133,6 +184,7 @@ class JAI_AD80GE(PoweredTask):
                 #TODO test name for file extension first?
                 #TODO add metadata?
                 iname = name+ "_"+sens.name+"." + imgtype
+                logger.debug("Jai capturing and saving image as: %s"%iname)
                 cv2.imwrite(iname, data)
     
     def configure_sensor(self,sensor, **kwargs ):
@@ -189,7 +241,7 @@ class JAI_AD80GE(PoweredTask):
             
         self._started = False
         self._powerdelay = kwargs.get('power_delay', 15)
-        
+        self._powerport = kwargs.get('power_port', 0)
         try:
             self._powerctlr = self._marshal_obj('power_ctlr', **kwargs)
             if not isinstance(self._powerctlr, Relay):
@@ -221,7 +273,7 @@ class JAI_AD80GE(PoweredTask):
             
 if __name__ == "__main__":
     
-    logger.basicConfig(level=logger.DEBUG)
+    logging.basicConfig(level=logging.DEBUG)
     
     init_args = {
         "sensors":(
@@ -235,7 +287,7 @@ if __name__ == "__main__":
             {'sensor':'rgb', 'pixel_format': 'BayerRG8'},
             {'sensor':'nir', 'pixel_format': 'Mono8'}        
         ),
-        'file_name': '/home/rbogle/Pictures/jai_tests/hdr',
+        'file_name': '~/Pictures/jai_tests/hdr',
         'sequence':[
             {'exposure_time': 20},
             {'exposure_time': 40},
@@ -252,8 +304,6 @@ if __name__ == "__main__":
     }    
     
     jai = JAI_AD80GE(**init_args)
-    #jai.add_sensor('RGB','00:0c:df:04:93:93')
-    #jai.add_sensor('NIR','00:0c:df:04:a3:93')
         
     
     jai.run(**run_args)
