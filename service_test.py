@@ -239,8 +239,7 @@ class AISApp(object):
         '''
             register_listener takes a db.model Auditor and connects a Listener
             plugin to the APS event model to catch events. 
-        '''
-       
+        '''       
         listener_name = auditor.plugin.name
         listener_obj = self.plugin_manager.getPluginByName(listener_name,'Listener').plugin_object
         event_mask = auditor.event_mask
@@ -266,8 +265,6 @@ class AISApp(object):
         else:
             logger.info("Auditor %s is unregistered" %auditor.name)
                 
-    
-    
     def initalize_db(self):
         """
         Populate empty db with default entries.
@@ -289,12 +286,12 @@ class AISApp(object):
 
     
     def __init__(self, plugin_location="ais/plugins"):
-
-        
+      
         #setup web ui based on Flask, Flask-Admin, Flask-SQLAlchemy
         self.flask = flask
         #pass aisapp instance back to flask for syncing
         flask.aisapp = self
+        
         logging.debug("Flask root %s" %self.flask.root_path)
         self.db = db
         self.database_file = config.DATABASE_PATH+config.DATABASE_FILE
@@ -340,10 +337,14 @@ class AISApp(object):
                         static_url_path="/admin",
                         template_mode='bootstrap3'
             )  
-
-        self.ui.add_view(JobView(Job,db.session, name='Job List',))
-        self.ui.add_view(AuditorView(Auditor,db.session, name='Auditor List'))
             
+        #add Scheduling Menu
+        self.ui.add_view(JobView(Job,db.session, name='Job List', category="Scheduling"))
+        self.ui.add_view(AuditorView(Auditor,db.session, name='Auditor List', category="Scheduling"))
+        self.ui.add_view(sqla.ModelView(Schedule,db.session, name = 'Schedules',category='Scheduling'))
+        self.ui.add_view(ActionView(Action,db.session,name='Actions', category='Scheduling'))
+        
+        #Make Plugins menu
         #find plugins with views and widgets available:
         for pi in plugin_manager.getAllPlugins():
             po = pi.plugin_object
@@ -355,14 +356,11 @@ class AISApp(object):
                 #register url view and add to Plugins Menu
                 po.category= "Plugins"
                 self.ui.add_view(po) 
-                
+   
         #add Advanced Menu
         self.ui.add_view(sqla.ModelView(User,db.session, category='Admin')) 
         self.ui.add_view(PluginView(Plugin,db.session,name='Plugins', category='Admin'))
-        self.ui.add_view(ActionView(Action,db.session,name='Actions', category='Admin'))
         self.ui.add_view(ConfigView(Config,db.session,name='Configs', category='Admin'))
-        self.ui.add_view(sqla.ModelView(Schedule,db.session, name = 'Schedules',category='Admin'))
-        
 
 if __name__=='__main__':
     #logging config

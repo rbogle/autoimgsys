@@ -24,21 +24,15 @@ class Task(PluginObj):
         """
         raise NotImplementedError
     
-    def get_config_properties(self):
+    def get_config_props_form(self):
         """ 
-            Called to confirm valid config elements
-            should return list of  tuples. Each tuple should be
-            (property name, pretty name, description)
-            These will be used in the ui
+            returns wtform
         """
         raise NotImplementedError
         
-    def get_run_properties(self):
+    def get_run_props_form(self):
         """ 
-            Called to confirm valid config elements
-            should return list of  tuples. Each tuple should be
-            (property name, pretty name, description)
-            These will be used in the ui
+            returns wtform
         """
         raise NotImplementedError
         

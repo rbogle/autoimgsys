@@ -18,6 +18,9 @@ class PluginObj(IPlugin, BaseView):
         self.widgetized = False
         self.enabled = False
         
+        #set defaults for template paths
+        # ais/plugins/name/widget.html
+        # ais/plugins/name/index.html
         path_items = inspect.getfile(self.__class__).split('/')[-3:-1]
         path = str.join('/',path_items)
         self.view_template = path+'/index.html'
@@ -31,7 +34,11 @@ class PluginObj(IPlugin, BaseView):
         else:
             self.app = manager.app
 
+
     def is_accessible(self):
+        '''
+            Makes viewable plugins appear and disappear as enabled/disabled        
+        '''
         return self.enabled
         
     def activate(self):
