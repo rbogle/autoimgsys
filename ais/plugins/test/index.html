@@ -47,7 +47,7 @@
   {{ lib.form_js() }}
 <script>
   $(function () {
-    $('#myTab a:first').tab('show')
+    $('#myTab a[href="#{{active_tab}}"]').tab('show')
   })
 </script>
 {% endblock %}

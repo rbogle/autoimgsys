@@ -24,7 +24,6 @@ class AISApp(object):
     def run(self):
         #fset host to 0.0.0.0 to show interface on all ips
         # need to setup ngix or apache and use wgsi
-        # flask must be last!
         self.flask.run(host="0.0.0.0")
     
     def pause(self):
@@ -142,8 +141,6 @@ class AISApp(object):
                     self.db.session.add(pdb)
                 self.db.session.commit()
         
-        
-    
     def schedule_jobs_from_db(self):
         '''
             looks in database for jobs enabled and loads them into the job scheduler
@@ -284,7 +281,6 @@ class AISApp(object):
         self.db.session.commit()
         return  
 
-    
     def __init__(self, plugin_location="ais/plugins"):
       
         #setup web ui based on Flask, Flask-Admin, Flask-SQLAlchemy
@@ -368,4 +364,4 @@ if __name__=='__main__':
     #setup and start the app
     app = AISApp()    
     app.run()
- 
+    

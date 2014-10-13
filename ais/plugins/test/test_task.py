@@ -10,14 +10,14 @@
 
 from ais.lib.task import Task
 from ais.ui.models import Config
-from wtforms import Form, StringField, HiddenField, FormField, FieldList
+from wtforms import Form, StringField, HiddenField, FormField, FieldList, TextAreaField
+from wtforms.widgets import ListWidget
 from flask.ext.admin import expose
-import logging, datetime
+import logging, datetime, ast
 
 logger = logging.getLogger(__name__)
 
-
-
+   
 class RunArgsForm(Form):
     id = HiddenField()
     name = StringField("Set Name")
@@ -57,18 +57,35 @@ class Test_Task(Task):
         
         from flask.ext.admin import helpers as h
         from flask import flash,request
-
+        active_tab = 'main'
         if h.is_form_submitted():
             form_data = request.form
             form_type = form_data.get('id')
             if form_type == 'init':
-                flash("Init Form submitted")
+                #load init config stored
+                icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
+                #update config obj with formdata
+                new_args = icfg.args.copy()
+
+                #icfg.args = new_args
+                
+                new_args['arg1']=ast.literal_eval(form_data.get('arg1'))
+                new_args['arg2']=ast.literal_eval(form_data.get('arg2'))
+                icfg.args = new_args
+                try:
+                    self.app.db.session.commit()
+                except:
+                    flash("Init form submission failed, bad data in form", "danger")
+                    active_tab = 'init'
+                else:    
+                    flash("Init Form submitted", "message")
+                    
             elif form_type == 'run':
                 flash("Run Form Submitted")
                 
         #load init config stored
         icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
-        init_form = InitArgsForm(id="init",name=icfg.name, arga = icfg.args.get('arg1'), argb =icfg.args.get('arg2'))
+        init_form = InitArgsForm(id="init",name=icfg.name, arg1 = icfg.args.get('arg1'), arg2 =icfg.args.get('arg2'))
         
         run_form = RunArgsForm(id="run")
         
@@ -76,6 +93,7 @@ class Test_Task(Task):
         return self.render(
             self.view_template, 
             init_form = init_form, 
+            active_tab = active_tab,
             return_url = "/test_task/",
             run_form=run_form
             )
