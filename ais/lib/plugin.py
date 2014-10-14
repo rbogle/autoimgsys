@@ -22,9 +22,9 @@ class PluginObj(IPlugin, BaseView):
         # ais/plugins/name/widget.html
         # ais/plugins/name/index.html
         path_items = inspect.getfile(self.__class__).split('/')[-3:-1]
-        path = str.join('/',path_items)
-        self.view_template = path+'/index.html'
-        self.widget_template = path+'/widget.html'
+        self.path = str.join('/',path_items)
+        self.view_template = self.path+'/index.html'
+        self.widget_template = self.path+'/widget.html'
         self.url="/"+self.__class__.__name__.lower()+"/"
         
         try: 

@@ -61,8 +61,7 @@ class AISApp(object):
             apsjob.pause()
             Job.query.get(int(apsjob.id)).running=False
         db.session.commit()
-
-        
+      
     def resume_jobs(self):
         '''
             iterates through aps joblist and calls resume, 
@@ -86,7 +85,7 @@ class AISApp(object):
         if pi is not None:
             po = pi.plugin_object
             logger.debug("Found plugin...")
-            if not po.initialized:
+            if not po.initalized:
                 #get initalize config and pass to
                 logger.debug("Plugin not initalized")
                 cfg = Config.query.filter_by(plugin=name, role="Initalize").first()
@@ -119,7 +118,7 @@ class AISApp(object):
             pdblist = Plugin.query.filter_by(category=cat).all() 
             pdbnames = [p.name for p in pdblist]
             
-            for pdb in pdblist: #alk the db 
+            for pdb in pdblist: #walk the db 
                 if pdb.name not in pinames.keys(): #plugin no longer loaded
                     logger.debug("Removing plugin %s from db" %pdb.name)
                     db.session.delete(pdb)
@@ -261,6 +260,13 @@ class AISApp(object):
             logger.error("Auditor %s could not be unregistered" %auditor.name)
         else:
             logger.info("Auditor %s is unregistered" %auditor.name)
+
+    def get_active_task_names():
+        choices = list()
+        pdbs = db.session.query(Plugin).filter_by(category="Task", enabled=True).all()
+        for p in pdbs:
+            choices.append((p.name, p.name))
+        return choices
                 
     def initalize_db(self):
         """
@@ -268,10 +274,13 @@ class AISApp(object):
         """
         self.db.drop_all()
         self.db.create_all()
-        # passwords are hashed, to use plaintext passwords instead:
-        # test_user = User(login="test", password="test")
+        # build plugin db
+        self.sync_plugin_db()
+        #TODO load defaults from a config file
+        
         test_user = User(login="test", password="test")
         self.db.session.add(test_user)
+        
         cr = Config(name='Run Config', plugin='Test Task', role="Runtime", args={'arg1':"first arg", 'arg2':"second arg"})
         ci = Config(name='Task Init', plugin='Test Task', role="Initalize", args={'arg1':"primata arg", 'arg2':"secunda arg"})
         self.db.session.add(cr)
@@ -279,8 +288,7 @@ class AISApp(object):
         self.db.session.add(Action(name='Run Test',config=cr))        
         self.db.session.add(Schedule(name='Every 2 Minutes', minute='*/2'))
         self.db.session.commit()
-        return  
-
+                           
     def __init__(self, plugin_location="ais/plugins"):
       
         #setup web ui based on Flask, Flask-Admin, Flask-SQLAlchemy
@@ -291,7 +299,8 @@ class AISApp(object):
         logging.debug("Flask root %s" %self.flask.root_path)
         self.db = db
         self.database_file = config.DATABASE_PATH+config.DATABASE_FILE
-                
+        
+            
         #setup plugin management and discovery
         plugin_manager = PluginManagerSingleton.get()
         self.plugin_manager = plugin_manager
@@ -305,16 +314,16 @@ class AISApp(object):
         plugin_manager.app = self #pass app ref back to plugins.
         plugin_manager.collectPlugins()
 
+        #setup databse defaults if it doesn't exist
+        if not os.path.exists(self.database_file):
+            logger.info("Initializing DB")
+            self.initalize_db()
+
         #add apscheduler and start it. 
         self.scheduler = BackgroundScheduler()
         self.scheduler.start()
         self.running = True
-        
-        #setup databse defaults if it doesn't exist
-        if not os.path.exists(self.database_file):
-            logger.info("Initializing DB")
-            self.initalize_db()                 
-              
+                         
         #cross check with DB to see if plugins are avail in ui
         self.sync_plugin_db()
         self.initalize_plugins()
@@ -345,11 +354,13 @@ class AISApp(object):
         for pi in plugin_manager.getAllPlugins():
             po = pi.plugin_object
             po.name = pi.name
-            logger.debug("Plugin found: %s" %pi.name)
+            logger.debug("Assessing Plugin: %s for UI" %pi.name)
             if po.widgetized:
+                logger.debug("Plugin widgetized: %s" %pi.name)
                 dv.register_plugin(po)
             if po.viewable:
                 #register url view and add to Plugins Menu
+                logger.debug("Plugin Viewable: %s" %pi.name)
                 po.category= "Plugins"
                 self.ui.add_view(po) 
    

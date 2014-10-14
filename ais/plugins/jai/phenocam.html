@@ -1,0 +1,53 @@
+{% extends "admin/base.html" %}
+{% import 'admin/lib.html' as lib with context %}
+
+{% macro extra() %}
+  <input name="_continue_editing" type="submit" class="btn" value="{{ _gettext('Save and Continue') }}" />
+{% endmacro %}
+
+{% block head %}
+    {{ super() }}
+    {{ lib.form_css() }}
+{% endblock %}
+
+{%block body%}
+<ul class="nav nav-tabs" role="tablist" id="myTab">
+  <li class="active"><a href="#main" role="tab" data-toggle="tab">Camera Status</a></li>
+  <li><a href="#init" role="tab" data-toggle="tab">Edit Camera Settings</a></li>
+  <li><a href="#run" role="tab" data-toggle="tab">Create Run Settings</a></li>
+</ul>
+
+<div class="tab-content">
+
+    <div class="tab-pane active" id="main">
+        <h4>PhenoCam Status and Control</h4>
+    </div>
+    
+    <div class="tab-pane" id="init">
+        <h4/> PhenoCam Initalizaton Settings </h4>
+            {% call lib.form_tag(init_form) %}
+                {{ lib.render_form_fields(init_form, form_opts=form_opts) }}
+                {{ lib.render_form_buttons(return_url, extra()) }}
+            {% endcall %}
+    </div>
+    
+    <div class="tab-pane" id="run">
+        <h4> Create PhenoCam Run Settings </h4>
+            {% call lib.form_tag(run_form) %}
+                {{ lib.render_form_fields(run_form, form_opts=form_opts) }}
+                {{ lib.render_form_buttons(return_url, extra()) }}
+            {% endcall %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block tail %}
+  {{ super() }}
+  {{ lib.form_js() }}
+<script>
+  $(function () {
+    $('#myTab a[href="#{{active_tab}}"]').tab('show')
+  })
+</script>
+{% endblock %}

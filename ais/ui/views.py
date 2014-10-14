@@ -1,8 +1,8 @@
 from flask.ext.admin.contrib.sqla import ModelView
 from flask.ext.admin.base import *
 from flask.ext.admin.form import rules
-from flask import Markup,redirect
-from wtforms.fields import  TextAreaField, SelectMultipleField
+from flask import Markup,redirect,flash
+from wtforms.fields import  TextAreaField, SelectField, SelectMultipleField
 import xml.etree.ElementTree as ET
 
 from ais.ui import flask,db
@@ -211,7 +211,8 @@ class ActionView(ModelView):
            query_factory= lambda: db.session.query(Config).filter_by(role="Runtime")
        )
    )        
-
+    
+   
 class ConfigView(ModelView):
     '''
         ConfigView is used for Config model, has functionality to validate
@@ -227,9 +228,20 @@ class ConfigView(ModelView):
             called before transaction committed to db 
         '''
         if model.args != "":
-            model.args = ast.literal_eval(model.args)
+            try:
+                model.args = ast.literal_eval(model.args)
+            except ValueError:
+                flash("Args must be a Python Type: Quoted String, list, dict, tuple, number", 'error')
+                model.args = ""
         return model
-
+        
+    form_overrides = dict(plugin=SelectField)
     form_extra_fields = {
         'args': TextAreaField("Config")
     }
+     
+    form_args = dict (
+       plugin = dict( #filter down select list to just Task plugins
+           choices= lambda: flask.aisapp.get_active_task_names()
+       )
+   )

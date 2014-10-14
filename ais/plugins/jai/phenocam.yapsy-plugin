@@ -1,0 +1,8 @@
+[Core]
+Name = PhenoCam
+Module = phenocam
+
+[Documentation]
+Author = Rian Bogle
+Version = 0.1
+Description = Plugin for PhenoCam using JAI_AD80GE

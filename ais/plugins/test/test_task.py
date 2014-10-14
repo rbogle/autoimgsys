@@ -11,7 +11,6 @@
 from ais.lib.task import Task
 from ais.ui.models import Config
 from wtforms import Form, StringField, HiddenField, FormField, FieldList, TextAreaField
-from wtforms.widgets import ListWidget
 from flask.ext.admin import expose
 import logging, datetime, ast
 
@@ -22,7 +21,7 @@ class RunArgsForm(Form):
     id = HiddenField()
     name = StringField("Set Name")
     arg1 = StringField('Arg 1')
-    arg2 = StringField('Arg 2')
+    arg2 = TextAreaField('Arg 2')
     
 class InitArgsForm(Form):
     id = HiddenField()
@@ -67,10 +66,9 @@ class Test_Task(Task):
                 #update config obj with formdata
                 new_args = icfg.args.copy()
 
-                #icfg.args = new_args
-                
-                new_args['arg1']=ast.literal_eval(form_data.get('arg1'))
-                new_args['arg2']=ast.literal_eval(form_data.get('arg2'))
+                #icfg.args = new_ar
+                new_args['arg1']= form_data.get('arg1') #this one is a string
+                new_args['arg2']=ast.literal_eval(form_data.get('arg2')) #this one should be a dict
                 icfg.args = new_args
                 try:
                     self.app.db.session.commit()
@@ -81,7 +79,27 @@ class Test_Task(Task):
                     flash("Init Form submitted", "message")
                     
             elif form_type == 'run':
-                flash("Run Form Submitted")
+                #load init config stored
+                icfg = Config(
+                    name=form_data.get('name'), 
+                    role="Runtime",
+                    plugin=self.name
+                )
+                #update config obj with formdata
+                icfg.args = dict()
+                icfg.args['arg1']=form_data.get('arg1')
+                try:
+                    icfg.args['arg2']=ast.literal_eval(form_data.get('arg2')) #this one should be a dict
+                    self.app.db.session.add(icfg)
+                    self.app.db.session.commit()
+                except ValueError:
+                    flash("Run form submission failed, bad data in arg2", "danger")
+                    active_tab = 'run'
+                except:
+                    flash("Run form submission failed", "danger")
+                    active_tab = 'run'
+                else:    
+                    flash("Run Form submitted", "message")
                 
         #load init config stored
         icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()

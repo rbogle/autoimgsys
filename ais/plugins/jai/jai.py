@@ -58,6 +58,7 @@ class JAI_AD80GE(PoweredTask):
                 offset_x (opt) : requested image x offset 0 default
                 offset_y (opt) : requested image y offest 0 default       
         """
+        self.last_run = kwargs
         try: # we dont want to crash the ais_service so just log errors
        
            #we need to start camerasys as this is task callback
@@ -75,6 +76,7 @@ class JAI_AD80GE(PoweredTask):
                 sname = pf.get("sensor", None)                
                 self._sensors[sname].cam.set_pixel_format_as_string(pf.get("pixel_format", None))
             #do we have a sequence to take or one-shot
+            self.last_run['time'] = datetime.datetime.now().strftime(datepattern)
             if sequence is not None:
                 if isinstance(sequence,list):
                     for i,shot in enumerate(sequence):
@@ -89,15 +91,21 @@ class JAI_AD80GE(PoweredTask):
             self.stop()        
         except Exception as e:
             logger.error( str(e))
+            self.last_run['success'] = False
+            self.last_run['error_msg'] = str(e)
             return 
         logger.info("JAI_AD80GE ran its task")
+        self.last_run['success'] = True     
         
     def configure(self, **kwargs):
-        sensors = kwargs.get('sensors',())
+        sensors = kwargs.get('sensors',None)
         self._sensors = dict()
-        for s in sensors :
-            name =s.get("name", None)
-            self._sensors[name] = Sensor(**s)
+        if sensors is not None:
+            for s in sensors :
+                name =s.get("name", None)
+                self._sensors[name] = Sensor(**s)
+            self.initalized = True 
+            
         self._powerdelay = kwargs.get('relay_delay', 15)
         self._powerport = kwargs.get('relay_port', 0)
         relay_name = kwargs.get('relay_plugin', None)        
@@ -106,7 +114,7 @@ class JAI_AD80GE(PoweredTask):
         if not isinstance(self._powerctlr, Relay):
             self._powerctlr = None
             logger.error("PowerController is not a Relay Object")          
-        self.initalized = True   
+  
         
     def get_configure_properties(self):
         return [
@@ -233,12 +241,16 @@ class JAI_AD80GE(PoweredTask):
         """
         super(JAI_AD80GE,self).__init__(**kwargs)
         
-        sensors = kwargs.get('sensors',())
+        sensors = kwargs.get('sensors', None)
         self._sensors = dict()
-        for s in sensors :
-            name =s.get("name", None)
-            self._sensors[name] = Sensor(**s)
-            
+        self.last_run = None
+        
+        if sensors is not None:
+            for s in sensors :
+                name =s.get("name", None)
+                self._sensors[name] = Sensor(**s)
+            self.initalized = True
+                      
         self._started = False
         self._powerdelay = kwargs.get('power_delay', 15)
         self._powerport = kwargs.get('power_port', 0)

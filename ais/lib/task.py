@@ -10,7 +10,7 @@ class Task(PluginObj):
     def __init__(self, **kwargs):
         super(Task,self).__init__()
         vars(self).update(kwargs)
-        self.initialized = False
+        self.initalized = False
         
     def configure(self, **kwargs):
         """ 
