@@ -142,9 +142,15 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         init_form = self.update_init_form()     
         run_form = self.update_run_form()   
         
+        status={}     
+        status['ok'] = self.initalized
+        if status['ok']:
+            status['msg'] = "PhenoCam initalized and ready"
+        else:
+            statusstatus['msg'] = "PhenoCam needs initialization"
         ##render page 
         return self.render(
-            self.view_template, 
+            self.view_template, status=status,
             init_form = init_form, 
             active_tab = active_tab,
             return_url = "/phenocam/",

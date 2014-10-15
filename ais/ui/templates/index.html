@@ -1,9 +1,6 @@
-{% extends "admin/base.html" %}
+{% extends "ui/templates/base.html" %}
 {% block head %}
 <META HTTP-EQUIV="refresh" CONTENT="60">
-{% endblock %}
-{% block head_css %}
-{{super()}}<link href="{{ url_for('static', filename='css/ais.css') }}" rel="stylesheet">
 {% endblock %}
 
 {% block body%}
@@ -54,6 +51,7 @@
 	{%endfor%}
 </div>
 {%endblock%}
+
 {% block tail %}
 {{super()}}
 <script>

@@ -344,11 +344,8 @@ class AISApp(object):
             )  
             
         #add Scheduling Menu
-        self.ui.add_view(JobView(Job,db.session, name='Job List', category="Scheduling"))
-        self.ui.add_view(AuditorView(Auditor,db.session, name='Auditor List', category="Scheduling"))
-        self.ui.add_view(sqla.ModelView(Schedule,db.session, name = 'Schedules',category='Scheduling'))
-        self.ui.add_view(ActionView(Action,db.session,name='Actions', category='Scheduling'))
-        
+        self.ui.add_view(JobView(Job,db.session, name='Scheduled Jobs'))
+
         #Make Plugins menu
         #find plugins with views and widgets available:
         for pi in plugin_manager.getAllPlugins():
@@ -363,11 +360,14 @@ class AISApp(object):
                 logger.debug("Plugin Viewable: %s" %pi.name)
                 po.category= "Plugins"
                 self.ui.add_view(po) 
-   
+        #Schedule Settings menu
+        self.ui.add_view(AuditorView(Auditor,db.session, name='Auditor List', category="Schedule Settings"))
+        self.ui.add_view(sqla.ModelView(Schedule,db.session, name = 'Schedules',category='Schedule Settings'))
+        self.ui.add_view(ActionView(Action,db.session,name='Actions', category='Schedule Settings'))   
         #add Advanced Menu
-        self.ui.add_view(sqla.ModelView(User,db.session, category='Admin')) 
-        self.ui.add_view(PluginView(Plugin,db.session,name='Plugins', category='Admin'))
-        self.ui.add_view(ConfigView(Config,db.session,name='Configs', category='Admin'))
+        self.ui.add_view(sqla.ModelView(User,db.session, category='Advanced')) 
+        self.ui.add_view(PluginView(Plugin,db.session,name='Plugins', category='Advanced'))
+        self.ui.add_view(ConfigView(Config,db.session,name='Configs', category='Advanced'))
 
 if __name__=='__main__':
     #logging config
@@ -375,4 +375,5 @@ if __name__=='__main__':
     #setup and start the app
     app = AISApp()    
     app.run()
+    
     

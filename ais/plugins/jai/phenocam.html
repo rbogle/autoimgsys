@@ -1,4 +1,4 @@
-{% extends "admin/base.html" %}
+{% extends "ui/templates/base.html" %}
 {% import 'admin/lib.html' as lib with context %}
 
 {% macro extra() %}
@@ -20,7 +20,26 @@
 <div class="tab-content">
 
     <div class="tab-pane active" id="main">
-        <h4>PhenoCam Status and Control</h4>
+        <div id="server_ctl" class="panel
+    			{% if status['ok']  %}
+				panel-success
+			{% else %}
+				panel-danger
+			{% endif %}
+        " style="margin-top: 15px">
+        	<div class="panel-heading"><div class="panel-title">PhenoCam Status and Control</div></div>
+        	<div class="panel-body">
+        		<div id='server_status' class='pull-left'>
+        				<span class="glyphicon glyphicon-ok"></span>
+        				<span class="status_msg">&nbsp;{{ status['msg']  }}</span>	
+        		</div>
+        		<div id='server_ctl_btns'  class='pull-right'>
+        				<a class="btn btn-primary" href="/phenocam/?reinit"><span class="glyphicon glyphicon-off"></span> Initalize</a>
+        				<a class="btn btn-primary" href="/phenocam/?test"><span class="glyphicon glyphicon-play-circle"></span> Test</a>
+        		</div>
+        	</div>
+        </div>
+        
     </div>
     
     <div class="tab-pane" id="init">
