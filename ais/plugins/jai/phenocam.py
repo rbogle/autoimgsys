@@ -147,7 +147,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         if status['ok']:
             status['msg'] = "PhenoCam initalized and ready"
         else:
-            statusstatus['msg'] = "PhenoCam needs initialization"
+            status['msg'] = "PhenoCam needs initialization"
         ##render page 
         return self.render(
             self.view_template, status=status,
