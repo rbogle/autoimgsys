@@ -291,7 +291,7 @@ class AISApp(object):
         self.db.session.add(Schedule(name='Every 2 Minutes', minute='*/2'))
         self.db.session.commit()
                            
-    def __init__(self, plugin_location="ais/plugins"):
+    def __init__(self, plugin_location=flask.root_path+"/plugins"):
       
         #setup web ui based on Flask, Flask-Admin, Flask-SQLAlchemy
         self.flask = flask
