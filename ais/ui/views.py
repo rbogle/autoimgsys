@@ -217,7 +217,7 @@ class ActionView(AisModelView):
    )        
     
    
-class ConfigView(ModelView):
+class ConfigView(AisModelView):
     '''
         ConfigView is used for Config model, has functionality to validate
         pickletype field called args. We safely eval the form input to 
