@@ -50,8 +50,12 @@ class DashboardView(AdminIndexView):
                           server_status=status, server_status_msg=msg, 
                           jobs_scheduled=jobs, widgets=w)
 
+class AisModelView(ModelView):
+    edit_template = 'ui/templates/edit.html'
+    list_template = 'ui/templates/list.html'
+    create_template= 'ui/templates/create.html'
         
-class PluginView(ModelView):
+class PluginView(AisModelView):
     '''
         PluginView for Plugins allows Advanced user to disable enable plugins
         Disabled plugins will not be shown to Actions nor utilized in the dashboard
@@ -89,7 +93,7 @@ def event_mask_formatter( view, context, model, event_mask):
                 str_mask += " | " + name
     return str_mask
         
-class AuditorView(ModelView):
+class AuditorView(AisModelView):
     '''
         AuditorView customizes the edit and create forms 
         and performs callbacks to aisapp to sync enabled jobs in the db
@@ -157,7 +161,7 @@ class AuditorView(ModelView):
         flask.aisapp.register_listeners_from_db()  
         return success  
 
-class JobView(ModelView):
+class JobView(AisModelView):
     '''
         JobView customized the edit and create forms 
         and performs callbacks to aisapp to sync enabled jobs in the db
@@ -192,7 +196,7 @@ class JobView(ModelView):
             return True
         return False
     
-class ActionView(ModelView):
+class ActionView(AisModelView):
 
     '''
         ActionView is used for Action model, 

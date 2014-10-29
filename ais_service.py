@@ -364,10 +364,10 @@ class AISApp(object):
                 self.ui.add_view(po) 
         #Schedule Settings menu
         self.ui.add_view(AuditorView(Auditor,db.session, name='Auditor List', category="Schedule Settings"))
-        self.ui.add_view(sqla.ModelView(Schedule,db.session, name = 'Schedules',category='Schedule Settings'))
+        self.ui.add_view(AisModelView(Schedule,db.session, name = 'Schedules',category='Schedule Settings'))
         self.ui.add_view(ActionView(Action,db.session,name='Actions', category='Schedule Settings'))   
         #add Advanced Menu
-        self.ui.add_view(sqla.ModelView(User,db.session, category='Advanced')) 
+        self.ui.add_view(AisModelView(User,db.session, category='Advanced')) 
         self.ui.add_view(PluginView(Plugin,db.session,name='Plugins', category='Advanced'))
         self.ui.add_view(ConfigView(Config,db.session,name='Configs', category='Advanced'))
 
