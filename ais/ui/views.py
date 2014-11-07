@@ -239,13 +239,13 @@ class ConfigView(AisModelView):
                 model.args = ""
         return model
         
-    form_overrides = dict(plugin=SelectField)
+    #form_overrides = dict(plugin=SelectField)
     form_extra_fields = {
         'args': TextAreaField("Config")
     }
      
-    form_args = dict (
-       plugin = dict( #filter down select list to just Task plugins
-           choices= lambda: flask.aisapp.get_active_task_names()
-       )
-   )
+#    form_args = dict (
+#       plugin = dict( #filter down select list to just Task plugins
+#           choices= lambda: flask.aisapp.get_active_task_names()
+#       )
+#   )

@@ -99,8 +99,8 @@ class JAI_AD80GE(PoweredTask):
         
     def configure(self, **kwargs):
         sensors = kwargs.get('sensors',None)
-        self._sensors = dict()
         if sensors is not None:
+            self._sensors = dict()
             for s in sensors :
                 name =s.get("name", None)
                 self._sensors[name] = Sensor(**s)
@@ -110,6 +110,7 @@ class JAI_AD80GE(PoweredTask):
         self._powerport = kwargs.get('relay_port', 0)
         relay_name = kwargs.get('relay_plugin', None)        
         if relay_name is not None:
+            #TODO what if we're not running under the ais_service?
             self._powerctlr = self.manager.getPluginByName(relay_name, 'Relay').plugin_object
         if not isinstance(self._powerctlr, Relay):
             self._powerctlr = None
@@ -299,7 +300,7 @@ if __name__ == "__main__":
             {'sensor':'rgb', 'pixel_format': 'BayerRG8'},
             {'sensor':'nir', 'pixel_format': 'Mono8'}        
         ),
-        'file_name': '~/Pictures/jai_tests/hdr',
+        'file_name': '/home/rbogle/Pictures/jai_tests/hdr',
         'sequence':[
             {'exposure_time': 20},
             {'exposure_time': 40},

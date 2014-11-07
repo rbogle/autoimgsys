@@ -117,4 +117,4 @@ class Config(db.Model):
     args = db.Column(db.PickleType)
     
     def __repr__(self):
-        return self.name
+        return "%s --> %s" %(self.plugin,self.name)

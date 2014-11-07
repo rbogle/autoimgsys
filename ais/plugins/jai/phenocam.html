@@ -34,8 +34,8 @@
         				<span class="status_msg">&nbsp;{{ status['msg']  }}</span>	
         		</div>
         		<div id='server_ctl_btns'  class='pull-right'>
-        				<a class="btn btn-primary" href="/phenocam/?reinit"><span class="glyphicon glyphicon-off"></span> Initalize</a>
-        				<a class="btn btn-primary" href="/phenocam/?test"><span class="glyphicon glyphicon-play-circle"></span> Test</a>
+        				<a class="btn btn-primary" href="/phenocam/?action=reinit"><span class="glyphicon glyphicon-off"></span> Initalize</a>
+        				<a class="btn btn-primary" href="/phenocam/?action=test"><span class="glyphicon glyphicon-play-circle"></span> Test</a>
         		</div>
         	</div>
         </div>
@@ -52,6 +52,9 @@
     
     <div class="tab-pane" id="run">
         <h4> Create PhenoCam Run Settings </h4>
+            {% call lib.form_tag(run_list) %}
+                {{ lib.render_form_fields(run_list, form_opts=list_opts) }}
+            {% endcall %}
             {% call lib.form_tag(run_form) %}
                 {{ lib.render_form_fields(run_form, form_opts=form_opts) }}
                 {{ lib.render_form_buttons(return_url, extra()) }}
