@@ -110,7 +110,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             #TODO we need to validate this as usable dict
             #update config obj with formdata
             new_args = form.get("args")
-            icfg.args = new_args
+            icfg.args = ast.literal_eval(new_args)
             try:
                 self.app.db.session.add(icfg)
                 self.app.db.session.commit()

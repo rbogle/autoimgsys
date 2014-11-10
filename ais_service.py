@@ -72,7 +72,9 @@ class AISApp(object):
         aps_jobs = self.scheduler.get_jobs()
         for apsjob in aps_jobs:
             apsjob.resume()
-            Job.query.get(int(apsjob.id)).running=True
+            dbsjob = Job.query.get(int(apsjob.id))
+            if dbsjob is not None:
+                dbsjob.running=True
         db.session.commit()
     
     def initalize_plugins(self):
@@ -154,8 +156,10 @@ class AISApp(object):
         
         for job in joblist:
             if job.enabled:
-                self.schedule_job(job)
-                logger.debug("Job scheduled: %s" %job)
+                 if self.schedule_job(job):
+                     logger.debug("Job scheduled: %s" %job)
+                 else: 
+                     logger.debug("Job %s could not be scheduled." %job)
             else:
                 self.unschedule_job(job)
                 logger.debug("Job unscheduled: %s" %job)
@@ -207,10 +211,11 @@ class AISApp(object):
                                 **trigger_args
                                 )
             
-            except:
+            except Exception as e:
+                logger.debug("Job scheduler exception: %s" %e)
                 logger.info("Job %s could not be scheduled" %job.id)
                 job.running = False
-                return
+                return False
             logger.info("Job %s has been scheduled" %job.id)
             
         if not self.running:
@@ -219,6 +224,7 @@ class AISApp(object):
             aps_job.pause()
         else:
             job.running = True
+        return True
                                
     def unschedule_job(self, job):
         '''

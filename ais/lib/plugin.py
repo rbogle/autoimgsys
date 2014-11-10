@@ -12,7 +12,7 @@ class PluginObj(IPlugin, BaseView):
         
         IPlugin.__init__(self)
         BaseView.__init__(self, **kwargs)
-        manager = PluginManagerSingleton.get()
+        self.manager = PluginManagerSingleton.get()
         
         self.viewable = False
         self.widgetized = False
@@ -28,11 +28,11 @@ class PluginObj(IPlugin, BaseView):
         self.url="/"+self.__class__.__name__.lower()+"/"
         
         try: 
-            getattr(manager, 'app')
+            getattr(self.manager, 'app')
         except Exception,e:
             pass
         else:
-            self.app = manager.app
+            self.app = self.manager.app
 
 
     def is_accessible(self):

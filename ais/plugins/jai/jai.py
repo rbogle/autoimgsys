@@ -62,7 +62,6 @@ class JAI_AD80GE(PoweredTask):
         try: # we dont want to crash the ais_service so just log errors
        
            #we need to start camerasys as this is task callback
-            powerport= kwargs.get("power_port", 0)
             if not self._started:   
                 self.start()
             
@@ -87,13 +86,14 @@ class JAI_AD80GE(PoweredTask):
                 #looking for settings for one-shot
                 self.configure_shot(**kwargs)
                 self.save_image(filename,imgtype)
-    
             self.stop()        
         except Exception as e:
+            self.stop()
             logger.error( str(e))
+            logger.error( traceback.format_exc())
             self.last_run['success'] = False
             self.last_run['error_msg'] = str(e)
-            return 
+            raise e 
         logger.info("JAI_AD80GE ran its task")
         self.last_run['success'] = True     
         
@@ -108,13 +108,13 @@ class JAI_AD80GE(PoweredTask):
             
         self._powerdelay = kwargs.get('relay_delay', 15)
         self._powerport = kwargs.get('relay_port', 0)
-        relay_name = kwargs.get('relay_plugin', None)        
+        relay_name = kwargs.get('relay_name', None)  
+        self._powerctlr = None
         if relay_name is not None:
             #TODO what if we're not running under the ais_service?
             self._powerctlr = self.manager.getPluginByName(relay_name, 'Relay').plugin_object
         if not isinstance(self._powerctlr, Relay):
-            self._powerctlr = None
-            logger.error("PowerController is not a Relay Object")          
+            logger.error("Plugin %s is not available" %relay_name)          
   
         
     def get_configure_properties(self):
@@ -157,23 +157,23 @@ class JAI_AD80GE(PoweredTask):
    
     def start(self):       
         if not self._started: 
+            logger.info("JAI_AD80GE is powering up")
             if self._powerctlr is not None:        
                 self._power(True)
+                logger.debug("Power delay for %s seconds" %self._powerdelay)
                 time.sleep(self._powerdelay)
-            
+                logger.debug("Power delay complete, connecting to camera")
             self._ar = Aravis()
             for sens in self._sensors.itervalues():
-                sens.cam = self._ar.get_camera(sens.mac)
-                
-            logger.info("JAI_AD80GE is powering up")
+                sens.cam = self._ar.get_camera(sens.mac) 
+            logger.info("JAI_AD80GE started")
             self._started = True       
             
     def stop(self):
-        if self._started:
-            if self._powerctlr is not None:        
-                self._power( False)
-                logger.info("JAI_AD80GE is powering down")        
-            self._started = False 
+        if self._powerctlr is not None:        
+            self._power( False)
+            logger.info("JAI_AD80GE is powering down")        
+        self._started = False 
             
     def save_image(self, name, imgtype=".tif"):
         if not self._started:
@@ -253,16 +253,26 @@ class JAI_AD80GE(PoweredTask):
             self.initalized = True
                       
         self._started = False
-        self._powerdelay = kwargs.get('power_delay', 15)
-        self._powerport = kwargs.get('power_port', 0)
-        try:
-            self._powerctlr = self._marshal_obj('power_ctlr', **kwargs)
-            if not isinstance(self._powerctlr, Relay):
-                raise TypeError
-        except:        
-            self._powerctlr = None
-            logger.error("PowerController is not a Relay Object")
-
+        self._powerdelay = kwargs.get('relay_delay', 30)
+        self._powerport = kwargs.get('relay_port', 0)
+        if 'power_ctlr' in kwargs:
+            try:
+                self._powerctlr = self._marshal_obj('power_ctlr', **kwargs)
+                if not isinstance(self._powerctlr, Relay):
+                    raise TypeError
+            except:        
+                self._powerctlr = None
+                logger.error("Could not marshall Relay Object")
+        elif 'relay_name' in kwargs:
+            relay_name = kwargs.get('relay_name', None)
+            try:
+                self._powerctlr = self.manager.getPluginByName(relay_name, 'Relay').plugin_object
+                if not isinstance(self._powerctlr, Relay):
+                    self._powerctlr = None
+                    logger.error("Plugin %s is not a Relay Object" %relay_name)   
+            except:
+                logger.error("Plugin %s is not available" %relay_name)
+                    
     def _capture_frame(self, sensor):
         frame = None
         if sensor is not None:
@@ -292,7 +302,13 @@ if __name__ == "__main__":
         "sensors":(
             {"name": "rgb", "mac": "00:0c:df:04:93:93"},
             {"name": "nir", "mac": "00:0c:df:04:a3:93"}        
-        )    
+        ),
+        "power_ctlr":{
+            'class': "Phidget",
+            'module': 'ais.plugins.phidget.phidget'
+        },
+        'relay_delay': 60,
+        'relay_port':0
     }    
     
     run_args = {
