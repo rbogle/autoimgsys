@@ -143,7 +143,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         flash("Initialization Requested")
         return redirect('/phenocam')
         
-     def do_reinit(self):
+     def do_status(self):
         from flask import flash, redirect
         flash("Status update Requested")
         return redirect('/phenocam')   
