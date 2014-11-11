@@ -167,7 +167,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             if action == "test":
                 return self.do_test()   
             if action == "status":
-                return = self.do_status()
+                return self.do_status()
         #check for form submit
         if h.is_form_submitted():
             form_data = request.form
