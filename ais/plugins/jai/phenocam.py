@@ -133,16 +133,21 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         else:
             return RunArgsForm(id="run")
 
-    def config_test(self):
+    def do_test(self):
         from flask import flash, redirect
         flash("Test Requested")
         return redirect('/phenocam')
     
-    def reinit(self):
+    def do_reinit(self):
         from flask import flash, redirect
         flash("Initialization Requested")
         return redirect('/phenocam')
-    
+        
+     def do_reinit(self):
+        from flask import flash, redirect
+        flash("Status update Requested")
+        return redirect('/phenocam')   
+        
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):
         
@@ -158,9 +163,11 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         action = request.args.get('action')
         if action is not None:
             if action == "reinit":
-                self.reinit()
+                self.do_reinit()
             if action == "test":
-                return self.config_test()   
+                return self.do_test()   
+            if action == "status":
+                return = self.do_status()
         #check for form submit
         if h.is_form_submitted():
             form_data = request.form

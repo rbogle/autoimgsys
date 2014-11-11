@@ -16,7 +16,7 @@
 from ais.plugins.jai.aravis import *
 from ais.lib.task import PoweredTask
 from ais.lib.relay import Relay
-
+import pprint
 import logging
 import time
 import numpy as np
@@ -96,6 +96,49 @@ class JAI_AD80GE(PoweredTask):
             raise e 
         logger.info("JAI_AD80GE ran its task")
         self.last_run['success'] = True     
+        
+    def status(self):
+        status= {}
+        try:
+            if not self._started:   
+                self.start()
+            for sensor in self._sensors.itervalues():
+                sensor_status = {}
+                sensor_status['Name'] = sensor.name
+                sensor_status['Mac'] = sensor.mac
+                sensor_status["Camera model"] = sensor.cam.get_model_name()
+                (x,y,w,h) = sensor.cam.get_region()
+                sensor_status["Image size"]= "(%s,%s)" %(w,h)
+                sensor_status["Image offset"] = "(%s,%s)" %(x,y)
+                sensor_status["Sensor size"]=sensor.cam.get_sensor_size()
+                sensor_status["Exposure"]=sensor.cam.get_exposure_time()
+                sensor_status["Frame rate"]=sensor.cam.get_frame_rate()
+                sensor_status["Payload"]=sensor.cam.get_payload()
+                sensor_status["AcquisitionMode"]=sensor.cam.get_string_feature("AcquisitionMode")
+                sensor_status["TriggerSource"]=sensor.cam.get_string_feature("TriggerSource")
+                sensor_status["TriggerMode"]=sensor.cam.get_string_feature("TriggerMode")
+                sensor_status["Bandwidth"]=sensor.cam.get_integer_feature("StreamBytesPerSecond")
+                sensor_status["PixelFormat"]=sensor.cam.get_string_feature("PixelFormat")
+                sensor_status["ExposureAuto"]=sensor.cam.get_string_feature("ExposureAuto")
+                sensor_status["PacketSize"]=sensor.cam.get_integer_feature("GevSCPSPacketSize")
+
+                ipnum=sensor.cam.get_integer_feature("GevCurrentIPAddress")
+                o1 = int(ipnum / 16777216) % 256
+                o2 = int(ipnum / 65536) % 256
+                o3 = int(ipnum / 256) % 256
+                o4 = int(ipnum) % 256
+                sensor_status["Current IP Addr"]='%(o1)s.%(o2)s.%(o3)s.%(o4)s' % locals()
+                status[sensor.name] = sensor_status
+                
+            self.stop()
+            
+        except Exception as e:
+            self.stop()
+            logger.error( str(e))
+            logger.error( traceback.format_exc())
+            return None
+            
+        return status
         
     def configure(self, **kwargs):
         sensors = kwargs.get('sensors',None)
@@ -307,7 +350,7 @@ if __name__ == "__main__":
             'class': "Phidget",
             'module': 'ais.plugins.phidget.phidget'
         },
-        'relay_delay': 60,
+        'relay_delay': 30,
         'relay_port':0
     }    
     
@@ -333,7 +376,7 @@ if __name__ == "__main__":
     }    
     
     jai = JAI_AD80GE(**init_args)
-        
-    
-    jai.run(**run_args)
+    pp = pprint.PrettyPrinter(indent=4)
+    pp.pprint(jai.status())
+    #jai.run(**run_args)
     
