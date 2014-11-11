@@ -141,12 +141,16 @@ class JAI_AD80GE(PoweredTask):
         return status
         
     def configure(self, **kwargs):
+        logger.info("Configuration called")
         sensors = kwargs.get('sensors',None)
         if sensors is not None:
             self._sensors = dict()
+            logger.info("Setting sensors for JAI camera")
             for s in sensors :
+                
                 name =s.get("name", None)
                 self._sensors[name] = Sensor(**s)
+                logger.info("Sensor: %s loaded" %name)
             self.initalized = True 
             
         self._powerdelay = kwargs.get('relay_delay', 15)
@@ -156,6 +160,11 @@ class JAI_AD80GE(PoweredTask):
         if relay_name is not None:
             #TODO what if we're not running under the ais_service?
             self._powerctlr = self.manager.getPluginByName(relay_name, 'Relay').plugin_object
+            if self._powerctlr is not None:
+                logger.info("JAI power controller set to use: %s on port %s with delay %s" 
+                    %(relay_name, self._powerport, self._powerdelay))
+            else:
+                logger.error("JAI power controller is not set!")
         if not isinstance(self._powerctlr, Relay):
             logger.error("Plugin %s is not available" %relay_name)          
   

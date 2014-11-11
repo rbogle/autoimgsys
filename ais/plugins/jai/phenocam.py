@@ -73,8 +73,9 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         except:
             flash("Init form submission failed", "danger")
             return 'init'
-        else:    
-            flash("Init Form submitted", "message")
+        else: 
+            self.configure(**icfg.args)
+            flash("Camera Settings Updated, Initialization Completed", "message")
             return 'main'
 
     def update_init_form(self):
@@ -117,7 +118,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             except:
                 flash("Run Config  submission failed", "error")
                 return 'run'
-            else:    
+            else: 
                 flash("Run Config %s submitted" % form.get("name"), "message")
                 return 'main'
         else:
@@ -140,7 +141,13 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
     
     def do_reinit(self):
         from flask import flash, redirect
-        flash("Initialization Requested")
+        icfg = icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
+        if icfg is not None:
+            kwargs = icfg.args.copy()
+            self.configure(**kwargs)
+            flash("Initialization Completed")
+        else:
+            flash("Camera Settings need to be set")
         return redirect('/phenocam')
         
     def do_status(self):
@@ -163,7 +170,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         action = request.args.get('action')
         if action is not None:
             if action == "reinit":
-                self.do_reinit()
+                return self.do_reinit()
             if action == "test":
                 return self.do_test()   
             if action == "status":
