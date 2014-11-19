@@ -42,6 +42,9 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         self.widgetized = True
         self.view_template = self.path+'/phenocam.html'
         self.widget_template = self.path+'/pheno_widget.html'
+        self.last_run={}
+        self.last_run['success'] = False
+        self.last_run['error_msg'] = "No runs attempted"
         
         
     def update_init_model(self, form):
@@ -60,8 +63,8 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         if form.get('use_relay') =='y':
             plugin_name = Plugin.query.get(int(form.get('relay_name'))).name
             new_args['relay_name'] = plugin_name
-            new_args['relay_port'] = form.get('relay_port')
-            new_args['relay_delay'] = form.get('relay_delay')
+            new_args['relay_port'] = int(form.get('relay_port'))
+            new_args['relay_delay'] = int(form.get('relay_delay'))
         else:
             for arg in ('relay_name','relay_port','relay_delay' ):
                 new_args.pop(arg, None)
@@ -95,8 +98,8 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         if 'relay_name' in icfg.args:
             form.use_relay.data = True
             form.relay_name.data = Plugin.query.filter_by(name=icfg.args.get("relay_name")).first()
-            form.relay_delay.data = icfg.args.get("relay_delay", "")
-            form.relay_port.data = icfg.args.get("relay_port", "")
+            form.relay_delay.data = int( icfg.args.get("relay_delay", ""))
+            form.relay_port.data = int(icfg.args.get("relay_port", ""))
         else:
             form.use_relay = False
         return form
@@ -154,6 +157,10 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         from flask import flash, redirect
         flash("Status update Requested")
         return redirect('/phenocam')   
+        
+    @expose('/test')
+    def test(self):
+        return "HElloworld"        
         
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):

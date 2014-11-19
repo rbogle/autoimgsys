@@ -352,8 +352,8 @@ if __name__ == "__main__":
     
     init_args = {
         "sensors":(
-            {"name": "rgb", "mac": "00:0c:df:04:93:93"},
-            {"name": "nir", "mac": "00:0c:df:04:a3:93"}        
+            {"name": "rgb", "mac": "00:0c:df:04:93:94"},
+            {"name": "nir", "mac": "00:0c:df:04:a3:94"}        
         ),
         "power_ctlr":{
             'class': "Phidget",
