@@ -10,3 +10,5 @@ SQLALCHEMY_DATABASE_URI=""
 SQLALCHEMY_ECHO = False
 
 SECRET_KEY = os.urandom(24)
+
+FILESTORE = '/home/rbogle/Pictures/jai_tests'

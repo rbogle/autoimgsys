@@ -66,7 +66,7 @@ class JAI_AD80GE(PoweredTask):
                 self.start()
             
             datepattern = kwargs.get("date_pattern", "%Y-%m-%dT%H%M%S" )    
-            filename = self._gen_filename(kwargs.get('file_name', "/tmp/img"), 
+            filename = self._gen_filename(kwargs.get('file_prefix', "jai"), 
                                  datepattern)
             imgtype = kwargs.get("image_type", 'tif')
             sequence = kwargs.get('sequence', None)
@@ -180,7 +180,7 @@ class JAI_AD80GE(PoweredTask):
         '''
                     date_pattern (opt) : passed as strftime format
                                         used for filename YYYY-MM-DDTHHMMSS
-                    file_name (opt) : Base path and name for filename ./img
+                    file_prefix (opt) : Base path and name for filename ./img
                     image_type (opt) : Format to save image as. Tiff default
                     pixelformats (opt) : list of image format to capture for each sensor
                     sequence (opt): list of dictionaries with the following:
@@ -336,14 +336,16 @@ class JAI_AD80GE(PoweredTask):
             raise Exception ("Invalid Sensor Object")
         return frame 
                
-    def _gen_filename(self, basename="./img", dtpattern="%Y-%m-%dT%H%M%S"):
+    def _gen_filename(self, prefix="jai", dtpattern="%Y-%m-%dT%H%M%S"):
         #TODO parse namepattern for timedate pattern?
         #datetime.datetime.now().strftime(dtpattern)
+        if self.filestore is None:
+            self.filestore = "."
         delim = "_"
         if dtpattern is not None:
             dt = datetime.datetime.now().strftime(dtpattern)
-        basename+=delim+dt    
-        return basename
+        prefix+=delim+dt    
+        return self.filestore+"/"+prefix
 
             
 if __name__ == "__main__":
@@ -368,7 +370,7 @@ if __name__ == "__main__":
             {'sensor':'rgb', 'pixel_format': 'BayerRG8'},
             {'sensor':'nir', 'pixel_format': 'Mono8'}        
         ),
-        'file_name': '/home/rbogle/Pictures/jai_tests/hdr',
+        'file_prefix': 'hdr',
         'sequence':[
             {'exposure_time': 20},
             {'exposure_time': 40},

@@ -26,6 +26,7 @@ class PluginObj(IPlugin, BaseView):
         self.view_template = self.path+'/index.html'
         self.widget_template = self.path+'/widget.html'
         self.url="/"+self.__class__.__name__.lower()+"/"
+        self.filestore = None
         
         try: 
             getattr(self.manager, 'app')

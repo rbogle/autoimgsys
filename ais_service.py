@@ -6,6 +6,7 @@ from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext import admin
 from flask.ext.admin.contrib import sqla
+from flask.ext.admin.contrib.fileadmin import FileAdmin
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # local packages
@@ -359,6 +360,11 @@ class AISApp(object):
         for pi in plugin_manager.getAllPlugins():
             po = pi.plugin_object
             po.name = pi.name
+            po.filestore = config.FILESTORE+"/"+pi.name
+            try: 
+                os.mkdir(po.filestore)
+            except Exception as ex:
+                logger.error('Failed to create plugin filestore %s' %ex)
             logger.debug("Assessing Plugin: %s for UI" %pi.name)
             if po.widgetized:
                 logger.debug("Plugin widgetized: %s" %pi.name)
@@ -368,6 +374,9 @@ class AISApp(object):
                 logger.debug("Plugin Viewable: %s" %pi.name)
                 po.category= "Plugins"
                 self.ui.add_view(po) 
+        
+        
+        self.ui.add_view(FileAdmin(config.FILESTORE, name="Files"))
         #Schedule Settings menu
         self.ui.add_view(AuditorView(Auditor,db.session, name='Auditor List', category="Schedule Settings"))
         self.ui.add_view(AisModelView(Schedule,db.session, name = 'Schedules',category='Schedule Settings'))

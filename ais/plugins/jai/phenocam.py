@@ -158,9 +158,6 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         flash("Status update Requested")
         return redirect('/phenocam')   
         
-    @expose('/test')
-    def test(self):
-        return "HElloworld"        
         
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):

@@ -49,6 +49,7 @@ class DashboardView(AdminIndexView):
         return self.render('ui/templates/index.html', 
                           server_status=status, server_status_msg=msg, 
                           jobs_scheduled=jobs, widgets=w)
+                      
 
 class AisModelView(ModelView):
     edit_template = 'ui/templates/edit.html'
