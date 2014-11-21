@@ -27,7 +27,7 @@ class AISApp(object):
     def run(self):
         #fset host to 0.0.0.0 to show interface on all ips
         # need to setup ngix or apache and use wgsi
-        self.flask.run(host="0.0.0.0")
+        self.flask.run(host="0.0.0.0", use_reloader=config.USE_RELOADER)
     
     def pause(self):
         logger.debug("AISApp pause called")
@@ -328,6 +328,16 @@ class AISApp(object):
             logger.info("Initializing DB")
             self.initalize_db()
 
+        #make sure filestore exists for FileAdmin and plugins
+        if not os.path.isdir(config.FILESTORE):    
+            try:
+                logger.debug("Attempting to makedir: %s" %config.FILESTORE)
+                os.makedirs(config.FILESTORE)
+            except OSError as oserr:
+                if not os.path.isdir(config.FILESTORE):
+                    logger.error("Ais_Service cannot mkdir %s" %config.FILESTORE)
+                    raise oserr
+                    
         #add apscheduler and start it. 
         self.scheduler = BackgroundScheduler()
         self.scheduler.start()

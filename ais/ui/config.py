@@ -1,6 +1,7 @@
 import os
 
 DEBUG=True
+USE_RELOADER=False
 # Create in-memory database
 DATABASE_FILE='ais_db.sqlite'
 DATABASE_PATH = '/db/'
