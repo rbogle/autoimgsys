@@ -360,11 +360,17 @@ class AISApp(object):
         for pi in plugin_manager.getAllPlugins():
             po = pi.plugin_object
             po.name = pi.name
+            #give each plugin a directory in the filestore
+            logger.debug("Creating plugin filestorage structures")
             po.filestore = config.FILESTORE+"/"+pi.name
-            try: 
-                os.mkdir(po.filestore)
-            except Exception as ex:
-                logger.error('Failed to create plugin filestore %s' %ex)
+            if not os.path.isdir(po.filestore):    
+                try:
+                    logger.debug("Attempting to makedir: %s" %po.filestore)
+                    os.makedirs(po.filestore)
+                except OSError:
+                    if not os.path.isdir(po.filestore):
+                        logger.error("Ais_Service cannot mkdir %s" %po.filestore)
+                        
             logger.debug("Assessing Plugin: %s for UI" %pi.name)
             if po.widgetized:
                 logger.debug("Plugin widgetized: %s" %pi.name)

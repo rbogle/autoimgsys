@@ -24,6 +24,7 @@ import cv2
 import ctypes
 import traceback
 import datetime
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,9 @@ class JAI_AD80GE(PoweredTask):
                           
                 date_pattern (opt) : passed as strftime format
                                     used for filename YYYY-MM-DDTHHMMSS
-                file_name (opt) : Base path and name for filename ./img
+                file_prefix (opt) : Prefix for filename 'jai'
+                sub_dir (None, hourly, daily, monthly, yearly) : make subdirs for storage
+                sub_dir_nested (opt): make a separate nested subdir for each y,m,d,h or single subdir as yyyy_mm_dd_hh
                 timeout (opt) : millseconds to wait for image return
                 sequence (opt): list of dictionaries with the following:
                                 each dict given will be a numbered image
@@ -65,9 +68,11 @@ class JAI_AD80GE(PoweredTask):
             if not self._started:   
                 self.start()
             
-            datepattern = kwargs.get("date_pattern", "%Y-%m-%dT%H%M%S" )    
+            datepattern = kwargs.get("date_pattern", "%Y-%m-%dT%H%M%S" ) 
+            split = kwargs.get("sub_dir",'Daily')
+            nest = kwargs.get("sub_dir_nested", False)
             filename = self._gen_filename(kwargs.get('file_prefix', "jai"), 
-                                 datepattern)
+                                 datepattern, split = split, nest = nest)
             imgtype = kwargs.get("image_type", 'tif')
             sequence = kwargs.get('sequence', None)
             pixformats = kwargs.get("pixel_formats", ())
@@ -336,17 +341,55 @@ class JAI_AD80GE(PoweredTask):
             raise Exception ("Invalid Sensor Object")
         return frame 
                
-    def _gen_filename(self, prefix="jai", dtpattern="%Y-%m-%dT%H%M%S"):
+    def _gen_filename(self, prefix="jai", dtpattern="%Y-%m-%dT%H%M%S", split=None, nest=False):
         #TODO parse namepattern for timedate pattern?
         #datetime.datetime.now().strftime(dtpattern)
-        if self.filestore is None:
-            self.filestore = "."
+        now = datetime.datetime.now()
         delim = "_"
+        if self.filestore is None:
+            imgpath = "/tmp/jai"
+        else:
+            imgpath = self.filestore
+            
+        if not os.path.isdir(imgpath):    
+            try:
+                os.makedirs(imgpath)
+            except OSError:
+                if not os.path.isdir(imgpath):
+                    logger.error("Jai cannot create directory structure for image storage")    
+                    
+        if split is not None:
+            imgpath = self._split_dir(now,imgpath,split,nest)
         if dtpattern is not None:
-            dt = datetime.datetime.now().strftime(dtpattern)
-        prefix+=delim+dt    
-        return self.filestore+"/"+prefix
+            dt = now.strftime(dtpattern)
+        #we return the path and name prefix with dt stamp
+        #save_image adds sensor and sequence number and suffix.
+        return imgpath+"/"+prefix+delim+dt
 
+    def _split_dir(self, atime, root="/tmp/jai",freq="Daily", nested=False):
+        '''
+            _split_dir will make a directory structure based on a datetime object
+            , frequency, and whether or not it should be nested. 
+        '''
+        if nested:
+            delim="/"
+        else:
+            delim ="_"
+        if freq in ['year', 'Year', 'yearly', 'Yearly']: 
+            root+='/'+ str(atime.year)
+        elif freq in ['month', 'Month', 'Monthly', 'monthly']:
+            root+='/'+str(atime.year)+delim+"%02d"%atime.month    
+        elif freq in ['day', 'daily', 'Day', 'Daily']:
+            root+='/'+str(atime.year)+delim+"%02d"%atime.month+delim+"%02d"%atime.day  
+        elif freq in ['hour', 'hourly', 'Hour', 'Hourly']:
+            root+='/'+str(atime.year)+delim+"%02d"%atime.month+delim+"%02d"%atime.day+delim+"%02d"%atime.hour
+        if not os.path.isdir(root):    
+            try:
+                os.makedirs(root)
+            except OSError:
+                if not os.path.isdir(root):
+                    logger.error("Jai cannot create directory structure for image storage")
+        return root
             
 if __name__ == "__main__":
     
