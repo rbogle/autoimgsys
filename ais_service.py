@@ -361,7 +361,8 @@ class AISApp(object):
                         static_url_path="/admin",
                         template_mode='bootstrap3'
             )  
-            
+        self.ui.hostname = config.HOSTNAME
+        
         #add Scheduling Menu
         self.ui.add_view(JobView(Job,db.session, name='Scheduled Jobs'))
 
@@ -395,10 +396,10 @@ class AISApp(object):
         self.ui.add_view(FileAdmin(config.FILESTORE, name="Data Files"))
         #Schedule Settings menu
         self.ui.add_view(AuditorView(Auditor,db.session, name='Auditor List', category="Schedule Settings"))
-        self.ui.add_view(AisModelView(Schedule,db.session, name = 'Schedules',category='Schedule Settings'))
+        self.ui.add_view(ModelView(Schedule,db.session, name = 'Schedules',category='Schedule Settings'))
         self.ui.add_view(ActionView(Action,db.session,name='Actions', category='Schedule Settings'))   
         #add Advanced Menu
-        self.ui.add_view(AisModelView(User,db.session, category='Advanced')) 
+        self.ui.add_view(ModelView(User,db.session, category='Advanced')) 
         self.ui.add_view(PluginView(Plugin,db.session,name='Plugins', category='Advanced'))
         self.ui.add_view(ConfigView(Config,db.session,name='Configs', category='Advanced'))
 

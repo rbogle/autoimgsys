@@ -46,17 +46,12 @@ class DashboardView(AdminIndexView):
             return redirect('/')
         status,jobs,msg = flask.aisapp.get_status()
         w = self.get_plugin_widgets()
-        return self.render('ui/templates/index.html', 
+        return self.render('admin/index.html', 
                           server_status=status, server_status_msg=msg, 
                           jobs_scheduled=jobs, widgets=w)
                       
-
-class AisModelView(ModelView):
-    edit_template = 'ui/templates/edit.html'
-    list_template = 'ui/templates/list.html'
-    create_template= 'ui/templates/create.html'
         
-class PluginView(AisModelView):
+class PluginView(ModelView):
     '''
         PluginView for Plugins allows Advanced user to disable enable plugins
         Disabled plugins will not be shown to Actions nor utilized in the dashboard
@@ -94,7 +89,7 @@ def event_mask_formatter( view, context, model, event_mask):
                 str_mask += " | " + name
     return str_mask
         
-class AuditorView(AisModelView):
+class AuditorView(ModelView):
     '''
         AuditorView customizes the edit and create forms 
         and performs callbacks to aisapp to sync enabled jobs in the db
@@ -162,7 +157,7 @@ class AuditorView(AisModelView):
         flask.aisapp.register_listeners_from_db()  
         return success  
 
-class JobView(AisModelView):
+class JobView(ModelView):
     '''
         JobView customized the edit and create forms 
         and performs callbacks to aisapp to sync enabled jobs in the db
@@ -199,7 +194,7 @@ class JobView(AisModelView):
             return True
         return False
     
-class ActionView(AisModelView):
+class ActionView(ModelView):
 
     '''
         ActionView is used for Action model, 
@@ -220,7 +215,7 @@ class ActionView(AisModelView):
    )        
     
    
-class ConfigView(AisModelView):
+class ConfigView(ModelView):
     '''
         ConfigView is used for Config model, has functionality to validate
         pickletype field called args. We safely eval the form input to 
