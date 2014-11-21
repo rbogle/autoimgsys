@@ -175,6 +175,7 @@ class JobView(AisModelView):
     
     def update_model(self, form, model):
         logger.debug("ScheduleView on_model_change called")
+        flask.aisapp.unschedule_job(model)
         success = super(JobView, self).update_model(form,model)
         if success:
             flask.aisapp.schedule_jobs_from_db()  
@@ -191,6 +192,7 @@ class JobView(AisModelView):
         
     def delete_model(self, model):
         logger.debug("ScheduleView delete_model called")
+        flask.aisapp.unschedule_job(model)
         success = super(JobView, self).delete_model(model)
         if success:
             flask.aisapp.schedule_jobs_from_db()

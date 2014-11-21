@@ -347,7 +347,7 @@ class AISApp(object):
         self.sync_plugin_db()
         self.initalize_plugins()
         
-        #examine db for jobs configured and enables and load them into APS
+        #examine db for jobs configured and enabled and load them into APS
         self.schedule_jobs_from_db()
         self.register_listeners_from_db()
         
