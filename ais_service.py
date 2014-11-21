@@ -392,7 +392,7 @@ class AISApp(object):
                 self.ui.add_view(po) 
         
         
-        self.ui.add_view(FileAdmin(config.FILESTORE, name="Files"))
+        self.ui.add_view(FileAdmin(config.FILESTORE, name="Data Files"))
         #Schedule Settings menu
         self.ui.add_view(AuditorView(Auditor,db.session, name='Auditor List', category="Schedule Settings"))
         self.ui.add_view(AisModelView(Schedule,db.session, name = 'Schedules',category='Schedule Settings'))

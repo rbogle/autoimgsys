@@ -47,8 +47,9 @@ class JAI_AD80GE(PoweredTask):
                 date_pattern (opt) : passed as strftime format
                                     used for filename YYYY-MM-DDTHHMMSS
                 file_prefix (opt) : Prefix for filename 'jai'
-                sub_dir (None, hourly, daily, monthly, yearly) : make subdirs for storage
-                sub_dir_nested (opt): make a separate nested subdir for each y,m,d,h or single subdir as yyyy_mm_dd_hh
+                date_dir (None, hourly, daily, monthly, yearly) : make subdirs for storage
+                date_dir_nested (opt): make a separate nested subdir for each y,m,d,h or single subdir as yyyy_mm_dd_hh
+                sub_dir (opt): add subdirectories to filestore
                 timeout (opt) : millseconds to wait for image return
                 sequence (opt): list of dictionaries with the following:
                                 each dict given will be a numbered image
@@ -69,10 +70,11 @@ class JAI_AD80GE(PoweredTask):
                 self.start()
             
             datepattern = kwargs.get("date_pattern", "%Y-%m-%dT%H%M%S" ) 
-            split = kwargs.get("sub_dir",'Daily')
-            nest = kwargs.get("sub_dir_nested", False)
+            split = kwargs.get("date_dir",'Daily')
+            nest = kwargs.get("date_dir_nested", False)
+            subdir = kwargs.get("sub_dir", None)
             filename = self._gen_filename(kwargs.get('file_prefix', "jai"), 
-                                 datepattern, split = split, nest = nest)
+                                 datepattern,  subdir=subdir, split = split, nest = nest)
             imgtype = kwargs.get("image_type", 'tif')
             sequence = kwargs.get('sequence', None)
             pixformats = kwargs.get("pixel_formats", ())
@@ -341,25 +343,30 @@ class JAI_AD80GE(PoweredTask):
             raise Exception ("Invalid Sensor Object")
         return frame 
                
-    def _gen_filename(self, prefix="jai", dtpattern="%Y-%m-%dT%H%M%S", split=None, nest=False):
+    def _gen_filename(self, prefix="jai", dtpattern="%Y-%m-%dT%H%M%S", subdir=None, split=None, nest=False):
         #TODO parse namepattern for timedate pattern?
         #datetime.datetime.now().strftime(dtpattern)
         now = datetime.datetime.now()
         delim = "_"
+        #set root path to images
         if self.filestore is None:
             imgpath = "/tmp/jai"
         else:
             imgpath = self.filestore
-            
+        #tack on subdir to imgpath if requested    
+        if subdir is not None:
+            imgpath+=subdir
+        #try to make imagepath    
         if not os.path.isdir(imgpath):    
             try:
                 os.makedirs(imgpath)
             except OSError:
                 if not os.path.isdir(imgpath):
                     logger.error("Jai cannot create directory structure for image storage")    
-                    
+        #if asked to make more subdirs by date do it:            
         if split is not None:
             imgpath = self._split_dir(now,imgpath,split,nest)
+        #make datepattern for file name if asked for
         if dtpattern is not None:
             dt = now.strftime(dtpattern)
         #we return the path and name prefix with dt stamp
