@@ -1,0 +1,8 @@
+[Core]
+Name = JAI_AD80GE
+Module = jai
+
+[Documentation]
+Author = Rian Bogle
+Version = 0.1
+Description = Driver for JAI AD80GE camera

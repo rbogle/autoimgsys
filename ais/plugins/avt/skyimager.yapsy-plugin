@@ -1,0 +1,8 @@
+[Core]
+Name = SkyImager
+Module = skyimager
+
+[Documentation]
+Author = Rian Bogle
+Version = 0.1
+Description = Plugin for SkyImaging Device using AVT camera

@@ -16,6 +16,7 @@ class Phidget(Relay):
                 self.interfaceKit.setOutputState(port, state)
             except PhidgetException as e:
                 logger.error("Phidget Exception %i: %s" % (e.code, e.details))
+                raise e
             finally:
                 self.disconnect()
             return True
@@ -31,7 +32,7 @@ class Phidget(Relay):
             
         except RuntimeError as e:
             logger.error("Runtime error: %s" % e.message)
-            return False
+            raise e
             
         except PhidgetException as e:
             logger.error("Phidget Exception %i: %s" % (e.code, e.details))
@@ -39,7 +40,7 @@ class Phidget(Relay):
                 self.interfaceKit.closePhidget()
             except PhidgetException as e:
                 logger.error("Phidget Exception %i: %s" % (e.code, e.details))
-            return False
+            raise e
             
         return True
     
@@ -48,4 +49,4 @@ class Phidget(Relay):
             self.interfaceKit.closePhidget()
         except PhidgetException as e:
             logger.error("Phidget Exception %i: %s" % (e.code, e.details))
-    
+            raise e

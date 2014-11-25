@@ -192,7 +192,7 @@ class Aravis(object):
         if handle:
             return Camera(self, handle)
         else:
-            raise AravisException()
+            raise AravisException("Could not obtain GigE camera with id: %s" %serialid )
 
     def list_devices(self):
         self.dll.arv_update_device_list()

@@ -74,6 +74,7 @@ class PoweredTask(Task):
             try:
                 self._powerctlr.set_port(self._powerport, powerstate)
             except Exception as e:
-                logger.error(str(e))                 
+                logger.error(str(e)) 
+                raise e                
         else:        
             logger.error("No power controller is configured.")

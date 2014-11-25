@@ -1,7 +1,7 @@
 from flask.ext.admin.contrib.sqla import ModelView
 from flask.ext.admin.base import *
 from flask.ext.admin.form import rules
-from flask import Markup,redirect,flash
+from flask import Markup,redirect,flash,jsonify
 from wtforms.fields import  TextAreaField, SelectField, SelectMultipleField
 import xml.etree.ElementTree as ET
 
@@ -9,7 +9,7 @@ from ais.ui import flask,db
 from ais.ui.models import *
 from ais.lib.listener import Listener
 
-import logging, ast
+import logging, ast, datetime
 logger = logging.getLogger(__name__)
  
 class DashboardView(AdminIndexView):
@@ -38,17 +38,20 @@ class DashboardView(AdminIndexView):
     @expose('/')
     @expose('/<action>')
     def index(self,action=None):
+        now = datetime.datetime.now()
         if action=='resume':
             rtn = flask.aisapp.resume()
         elif action=='pause':
             rtn = flask.aisapp.pause()
         elif action is not None:
             return redirect('/')
+        elif action=='time':
+            return jsonify(now)
         status,jobs,msg = flask.aisapp.get_status()
         w = self.get_plugin_widgets()
         return self.render('admin/index.html', 
                           server_status=status, server_status_msg=msg, 
-                          jobs_scheduled=jobs, widgets=w)
+                          jobs_scheduled=jobs, widgets=w, time=now)
                       
         
 class PluginView(ModelView):

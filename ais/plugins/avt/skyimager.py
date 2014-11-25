@@ -1,4 +1,6 @@
-import ais.plugins.jai.jai as jai #inhertiance path due to Yapsy detection rules
+# -*- coding: utf-8 -*-
+
+import ais.plugins.avt.avt as avt #inhertiancew path due to Yapsy detection rules
 from ais.ui.models import Config, Plugin
 from wtforms import Form,StringField,HiddenField,TextAreaField, BooleanField,IntegerField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
@@ -10,7 +12,7 @@ logger = logging.getLogger(__name__)
 class RunConfigListForm(Form):
     id = HiddenField()
     config = QuerySelectField("Stored Configs:", allow_blank=True, blank_text="Create New", 
-                          query_factory=lambda: Config.query.filter_by(plugin="PhenoCam", role="Runtime").all()                          
+                          query_factory=lambda: Config.query.filter_by(plugin="SkyImager", role="Runtime").all()                          
                           )    
     
 class RunArgsForm(Form):
@@ -20,14 +22,12 @@ class RunArgsForm(Form):
     
 class InitArgsForm(Form):
     id = HiddenField()
-    rgb = StringField('RGB Sensor Mac Address')
-    nir = StringField('NIR Sensor Mac Address')
     use_relay = BooleanField("Use Power Control?")
     relay_name = QuerySelectField("Relay Plugin", query_factory= lambda: Plugin.query.filter_by(category='Relay').all())
     relay_port = IntegerField("Relay Port")
     relay_delay = IntegerField("Seconds to Delay")
     
-class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection rules
+class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
     
     def __init__(self,**kwargs):
         """Initializes camera instance
@@ -36,29 +36,25 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                **kwargs Named arguments to configure the camera(s)
                    Sensors: dict of name: mac address for each of the sensors on board
         """
-        logger.debug("Phenocam __init__ called")
-        super(PhenoCam,self).__init__(**kwargs) 
+        logger.debug("SkyImager __init__ called")
+        super(SkyImager,self).__init__(**kwargs) 
         self.viewable = True
         self.widgetized = True
-        self.view_template = self.path+'/phenocam.html'
-        self.widget_template = self.path+'/pheno_widget.html'
+        self.view_template = self.path+'/skyimager.html'
+        self.widget_template = self.path+'/skyimg_widget.html'
         self.last_run={}
         self.last_run['success'] = False
         self.last_run['error_msg'] = "No runs attempted"
-        
-        
+
     def update_init_model(self, form):
         from flask import flash,request
         #load init config stored
         icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
         if icfg is None:
-            icfg = Config(plugin=self.name, role="Initalize", args={}, name="PhenoCam Init")
+            icfg = Config(plugin=self.name, role="Initalize", args={}, name="SkyImager Init")
         #update config obj with formdata
         new_args = icfg.args.copy()
-        new_args['sensors']=(
-            {"name": "rgb", "mac": form.get('rgb')},
-            {"name": "nir", "mac": form.get('nir')}        
-        ) 
+
         # if using relay then add to args else remove from args
         if form.get('use_relay') =='y':
             plugin_name = Plugin.query.get(int(form.get('relay_name'))).name
@@ -80,20 +76,14 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             self.configure(**icfg.args)
             flash("Camera Settings Updated, Initialization Completed", "message")
             return 'main'
-
+            
     def update_init_form(self):
         #load init config stored
         icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
         if icfg is None:
-            icfg = Config(plugin=self.name, role="Initalize", args={}, name="PhenoCam Init")
-#        form  = InitArgsForm(id="init")
-        sensors={}
-        sl = icfg.args.get("sensors", None)
-        if sl is not None:
-            for s in sl:
-                sensors[s.get('name')]=s.get('mac')
+            icfg = Config(plugin=self.name, role="Initalize", args={}, name="SkyImager Init")
         
-        form = InitArgsForm(id='init', rgb=sensors.get('rgb', ""), nir=sensors.get('nir',"") )
+        form = InitArgsForm(id='init')
         
         if 'relay_name' in icfg.args:
             form.use_relay.data = True
@@ -102,8 +92,8 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             form.relay_port.data = int(icfg.args.get("relay_port", ""))
         else:
             form.use_relay = False
-        return form
-    
+        return form     
+        
     def update_run_model(self,form):
         
         from flask import flash,request
@@ -135,12 +125,12 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             form = RunArgsForm(id="run", name = icfg.name, args=icfg.args)   
             return form
         else:
-            return RunArgsForm(id="run")
-
+            return RunArgsForm(id="run")        
+            
     def do_test(self):
         from flask import flash, redirect
         flash("Test Requested")
-        return redirect('/phenocam')
+        return redirect('/skyimager')
     
     def do_reinit(self):
         from flask import flash, redirect
@@ -151,14 +141,13 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             flash("Initialization Completed")
         else:
             flash("Camera Settings need to be set")
-        return redirect('/phenocam')
+        return redirect('/skyimager')
         
     def do_status(self):
         from flask import flash, redirect
         flash("Status update Requested")
-        return redirect('/phenocam')   
-        
-        
+        return redirect('/skyimager')   
+
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):
         
@@ -166,7 +155,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         from flask import flash,request
         
         if not self.initalized:
-            flash("PhenoCam has not been properly initalized! See Settings Tab", 'error' )
+            flash("SkyImager has not been properly initalized! See Settings Tab", 'error' )
             
         active_tab = 'main'
         #check for button actions on main
@@ -219,16 +208,17 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         status={}     
         status['ok'] = self.initalized
         if status['ok']:
-            status['msg'] = "PhenoCam initalized and ready"
+            status['msg'] = "SkyImager initalized and ready"
         else:
-            status['msg'] = "PhenoCam needs initialization"
+            status['msg'] = "SkyImager needs initialization"
         ##render page 
         return self.render(
             self.view_template, status=status,
             init_form = init_form, 
             active_tab = active_tab,
-            return_url = "/phenocam/",
+            return_url = "/skyimager/",
             run_list=run_list,
             list_opts = list_opts,
             run_form=run_form
             )
+        

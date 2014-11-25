@@ -52,6 +52,7 @@ import numpy as np
 import cv2
 import traceback
 import datetime
+import os
 from pymba import *
 
 logger = logging.getLogger(__name__)
@@ -90,16 +91,17 @@ class AVT(PoweredTask):
                     OffsetY (opt) : requested image y offest 0 default
                     
         """
-        try: # we dont want to crash the ais_service so just log errors
-           
-           #we need to start camerasys as this is task callback
-            
+        try: 
+            self.last_run = kwargs
             if not self._started:   
                 self.start()
                 
-            datepattern = kwargs.get("date_pattern", "%Y-%m-%dT%H%M%S" )    
-            filename = self._genFilename(kwargs.get('file_name', "/tmp/img_"), 
-                                         datepattern)
+            datepattern = kwargs.get("date_pattern", "%Y-%m-%dT%H%M%S" ) 
+            split = kwargs.get("date_dir",'Daily')
+            nest = kwargs.get("date_dir_nested", False)
+            subdir = kwargs.get("sub_dir", None)
+            filename = self._gen_filename(kwargs.get('file_prefix', "jai"), 
+                                 datepattern,  subdir=subdir, split = split, nest = nest)
             imgtype = kwargs.get("image_type", 'tif')
             timeout = kwargs.get("timeout", 5000)
             sequence = kwargs.get('sequence', None)
@@ -111,6 +113,7 @@ class AVT(PoweredTask):
                 self._bit_depth = np.uint8             
             self.setProperty("PixelFormat", pxfmt)
             #do we have a sequence to take or one-shot
+            self.last_run['time'] = datetime.datetime.now().strftime(datepattern)
             if sequence is not None:
                 if isinstance(sequence,list):
                     for i,shot in enumerate(sequence):
@@ -125,14 +128,19 @@ class AVT(PoweredTask):
             self.stop()
             
         except Exception as e:
+            self.stop()
             logger.error( str(e))
-            return
-        logger.info("%s ran its task" % self.name)
+            logger.error( traceback.format_exc())
+            self.last_run['success'] = False
+            self.last_run['error_msg'] = str(e)
+            raise e 
+        logger.info("AVT driver ran its task")
+        self.last_run['success'] = True  
         
     def configure(self, **kwargs):
-        self._powerdelay = kwargs.get('relay_delay', 15)
+        self._powerdelay = kwargs.get('relay_delay', 30)
         self._powerport = kwargs.get('relay_port', 0)
-        relay_name = kwargs.get('relay_plugin', None)        
+        relay_name = kwargs.get('relay_name', None)        
         if relay_name is not None:
             self._powerctlr = self.manager.getPluginByName(relay_name, 'Relay').plugin_object
         if not isinstance(self._powerctlr, Relay):
@@ -181,6 +189,7 @@ class AVT(PoweredTask):
         if not self._started: 
             if self._powerctlr is not None:        
                 self._power(True)
+                logger.info("AVT performing delay for powerup waiting %s sec."%self._powerdelay)
                 time.sleep(self._powerdelay)
                
             self._setupVimba()
@@ -361,14 +370,28 @@ class AVT(PoweredTask):
         self._properties = {}
         self._camera = None
         self._started = False
-        self._powerdelay = kwargs.get('power_delay', 15)
-        self._powerctlr = self._marshal_obj('power_ctlr', **kwargs)
-        self._powerport = kwargs.get('power_port', 0)
+        self._powerdelay = kwargs.get('relay_delay', 30)
+        #self._powerctlr = self._marshal_obj('power_ctlr', **kwargs)
+        self._powerport = kwargs.get('relay_port', 0)
         self._bit_depth = np.uint16
         #powcls = self._powerctlr.__class__()
-        if not isinstance(self._powerctlr, Relay):
-            self._powerctlr = None
-            logger.error("PowerController is not a Relay Object")
+        if 'power_ctlr' in kwargs:
+            try:
+                self._powerctlr = self._marshal_obj('power_ctlr', **kwargs)
+                if not isinstance(self._powerctlr, Relay):
+                    raise TypeError
+            except:        
+                self._powerctlr = None
+                logger.error("Could not marshall Relay Object")
+        elif 'relay_name' in kwargs:
+            relay_name = kwargs.get('relay_name', None)
+            try:
+                self._powerctlr = self.manager.getPluginByName(relay_name, 'Relay').plugin_object
+                if not isinstance(self._powerctlr, Relay):
+                    self._powerctlr = None
+                    logger.error("Plugin %s is not a Relay Object" %relay_name)   
+            except:
+                logger.error("Plugin %s is not available" %relay_name)
 
 #
     def __del__(self):
@@ -435,14 +458,59 @@ class AVT(PoweredTask):
             system.runFeatureCommand("GeVDiscoveryAllOnce")
             time.sleep(0.2)           
         
-    def _genFilename(self, basename="./img", dtpattern="%Y-%m-%dT%H%M%S"):
-        #TODO parse namepattern for timedate pattern?
-        #datetime.datetime.now().strftime(dtpattern)
+    def _gen_filename(self, prefix="avt", dtpattern="%Y-%m-%dT%H%M%S", subdir=None, split=None, nest=False):
+
+        now = datetime.datetime.now()
         delim = "_"
+        #set root path to images
+        if self.filestore is None:
+            imgpath = "/tmp/avt"
+        else:
+            imgpath = self.filestore
+        #tack on subdir to imgpath if requested    
+        if subdir is not None:
+            imgpath+=subdir
+        #try to make imagepath    
+        if not os.path.isdir(imgpath):    
+            try:
+                os.makedirs(imgpath)
+            except OSError:
+                if not os.path.isdir(imgpath):
+                    logger.error("AVT cannot create directory structure for image storage")    
+        #if asked to make more subdirs by date do it:            
+        if split is not None:
+            imgpath = self._split_dir(now,imgpath,split,nest)
+        #make datepattern for file name if asked for
         if dtpattern is not None:
-            dt = datetime.datetime.now().strftime(dtpattern)
-        basename+=delim+dt    
-        return basename
+            dt = now.strftime(dtpattern)
+        #we return the path and name prefix with dt stamp
+        #save_image adds sensor and sequence number and suffix.
+        return imgpath+"/"+prefix+delim+dt
+
+    def _split_dir(self, atime, root="/tmp/avt",freq="Daily", nested=False):
+        '''
+            _split_dir will make a directory structure based on a datetime object
+            , frequency, and whether or not it should be nested. 
+        '''
+        if nested:
+            delim="/"
+        else:
+            delim ="_"
+        if freq in ['year', 'Year', 'yearly', 'Yearly']: 
+            root+='/'+ str(atime.year)
+        elif freq in ['month', 'Month', 'Monthly', 'monthly']:
+            root+='/'+str(atime.year)+delim+"%02d"%atime.month    
+        elif freq in ['day', 'daily', 'Day', 'Daily']:
+            root+='/'+str(atime.year)+delim+"%02d"%atime.month+delim+"%02d"%atime.day  
+        elif freq in ['hour', 'hourly', 'Hour', 'Hourly']:
+            root+='/'+str(atime.year)+delim+"%02d"%atime.month+delim+"%02d"%atime.day+delim+"%02d"%atime.hour
+        if not os.path.isdir(root):    
+            try:
+                os.makedirs(root)
+            except OSError:
+                if not os.path.isdir(root):
+                    logger.error("AVT cannot create directory structure for image storage")
+        return root
     
     def _configShot(self, **kwargs):
         if self._started:
@@ -462,13 +530,23 @@ if __name__ == "__main__":
     
     logging.basicConfig(level=logging.DEBUG)
     
-    init_args ={}   
+    init_args ={
+        "power_ctlr":{
+            'class': "Phidget",
+            'module': 'ais.plugins.phidget.phidget'
+        },
+        'relay_delay': 30,
+        'relay_port':0,
+        
+    }   
     
     run_args = {
 
-        'file_name': '~/Pictures/avt_tests/hdr',
+        'file_prefix': 'hdr',
+        'sub_dir' : "/test",
+        'date_dir' : "Daily",
+        'date_dir_nested': False,
         'pixel_format': 'BayerGB8',
-#        'exposure_time': 1000000
         'sequence':[
             {'exposure_time': 977},
             {'exposure_time': 1953},

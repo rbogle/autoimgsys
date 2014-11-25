@@ -1,4 +1,4 @@
-{% extends "admin/master.html" %}
+{% extends "admin/base.html" %}
 {% import 'admin/lib.html' as lib with context %}
 
 {% macro extra() %}
@@ -27,16 +27,16 @@
 				panel-danger
 			{% endif %}
         " style="margin-top: 15px">
-        	<div class="panel-heading"><div class="panel-title">PhenoCam Status and Control</div></div>
+        	<div class="panel-heading"><div class="panel-title">SkyImager Status and Control</div></div>
         	<div class="panel-body">
         		<div id='server_status' class='pull-left'>
         				<span class="glyphicon glyphicon-ok"></span>
         				<span class="status_msg">&nbsp;{{ status['msg']  }}</span>	
         		</div>
         		<div id='server_ctl_btns'  class='pull-right'>
-        				<a class="btn btn-primary" href="/phenocam/?action=reinit"><span class="glyphicon glyphicon-wrench"></span> Initalize</a>
-                              <a class="btn btn-primary" href="/phenocam/?action=status"><span class="glyphicon glyphicon-tasks"></span> Status</a>
-        				<a class="btn btn-primary" href="/phenocam/?action=test"><span class="glyphicon glyphicon-picture"></span> Test</a>
+        				<a class="btn btn-primary" href="/skyimager/?action=reinit"><span class="glyphicon glyphicon-wrench"></span> Initalize</a>
+                              <a class="btn btn-primary" href="/skyimager/?action=status"><span class="glyphicon glyphicon-tasks"></span> Status</a>
+        				<a class="btn btn-primary" href="/skyimager/?action=test"><span class="glyphicon glyphicon-picture"></span> Test</a>
         		</div>
         	</div>
         </div>
@@ -44,7 +44,7 @@
     </div>
     
     <div class="tab-pane" id="init">
-        <h4/> PhenoCam Initalizaton Settings </h4>
+        <h4/> SkyImager Initalizaton Settings </h4>
             {% call lib.form_tag(init_form) %}
                 {{ lib.render_form_fields(init_form, form_opts=form_opts) }}
                 {{ lib.render_form_buttons(return_url, extra()) }}
@@ -52,7 +52,7 @@
     </div>
     
     <div class="tab-pane" id="run">
-        <h4> Create PhenoCam Run Settings </h4>
+        <h4> Create Skyimager Run Settings </h4>
             {% call lib.form_tag(run_list) %}
                 {{ lib.render_form_fields(run_list, form_opts=list_opts) }}
             {% endcall %}
