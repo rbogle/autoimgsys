@@ -1,0 +1,8 @@
+[Core]
+Name = AVT
+Module = avt
+
+[Documentation]
+Author = Rian Bogle
+Version = 0.1
+Description = Driver for AVT camera
