@@ -192,7 +192,7 @@ class Aravis(object):
         if handle:
             return Camera(self, handle)
         else:
-            raise AravisException()
+            raise AravisException("Could not obtain GigE camera with id: %s" %serialid )
 
     def list_devices(self):
         self.dll.arv_update_device_list()
@@ -545,8 +545,9 @@ class Camera(Device):
         logging.info("%s : cleanup" % self.name)
         self._ar.g.g_object_unref(self._handle)
 
-    def __del__(self):
-        self.cleanup()
+# This might cause probs with Garbage collection
+#    def __del__(self):
+#        self.cleanup()
 
 
 

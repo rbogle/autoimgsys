@@ -229,6 +229,15 @@ class JAI_AD80GE(PoweredTask):
             self._started = True       
             
     def stop(self):
+        try:
+            for sens in self._sensors.itervalues():
+                sens.cam.cleanup()
+                sens.cam=None
+        except:
+            for sens in self._sensors.itervalues():
+                sens.cam= None
+        self._ar = None
+        
         if self._powerctlr is not None:        
             self._power( False)
             logger.info("JAI_AD80GE is powering down")        
