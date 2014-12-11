@@ -25,6 +25,7 @@ import ctypes
 import traceback
 import datetime
 import os
+from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
 
@@ -110,9 +111,17 @@ class JAI_AD80GE(PoweredTask):
             if not self._started:   
                 self.start()
             for sensor in self._sensors.itervalues():
-                sensor_status = {}
+                sensor_status = OrderedDict()
                 sensor_status['Name'] = sensor.name
                 sensor_status['Mac'] = sensor.mac
+
+                ipnum=sensor.cam.get_integer_feature("GevCurrentIPAddress")
+                o1 = int(ipnum / 16777216) % 256
+                o2 = int(ipnum / 65536) % 256
+                o3 = int(ipnum / 256) % 256
+                o4 = int(ipnum) % 256
+                sensor_status["Current IP Addr"]='%(o1)s.%(o2)s.%(o3)s.%(o4)s' % locals()
+               
                 sensor_status["Camera model"] = sensor.cam.get_model_name()
                 (x,y,w,h) = sensor.cam.get_region()
                 sensor_status["Image size"]= "(%s,%s)" %(w,h)
@@ -129,21 +138,19 @@ class JAI_AD80GE(PoweredTask):
                 sensor_status["ExposureAuto"]=sensor.cam.get_string_feature("ExposureAuto")
                 sensor_status["PacketSize"]=sensor.cam.get_integer_feature("GevSCPSPacketSize")
 
-                ipnum=sensor.cam.get_integer_feature("GevCurrentIPAddress")
-                o1 = int(ipnum / 16777216) % 256
-                o2 = int(ipnum / 65536) % 256
-                o3 = int(ipnum / 256) % 256
-                o4 = int(ipnum) % 256
-                sensor_status["Current IP Addr"]='%(o1)s.%(o2)s.%(o3)s.%(o4)s' % locals()
-                status[sensor.name] = sensor_status
+                status[sensor.name] = sensor_status  
                 
             self.stop()
             
         except Exception as e:
-            self.stop()
+            try:
+                self.stop()
+            except:
+                pass
             logger.error( str(e))
             logger.error( traceback.format_exc())
-            return None
+            status['Error'] = str(e)
+            status['Traceback'] = traceback.format_exc()
             
         return status
         

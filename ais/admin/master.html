@@ -1,12 +1,44 @@
 {% extends "admin/base.html" %}
+
 {% block head_meta %}
     {{super()}}
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
 {% endblock %}
+
 {% block head_css %}
     {{super()}}<link href="{{ url_for('static', filename='css/ais.css') }}" rel="stylesheet">
 {% endblock %}
+
 {% block brand %}
 	  <div class="navbar-brand">{{ admin_view.admin.hostname }}</div>
+{% endblock %}
+
+{% block access_control %}
+        <div id="device-time" class="pull-right"></div>
+{% endblock%}
+
+{% block tail %}
+{{super()}}
+<script>
+// load time data into #device-time
+$.getJSON('/time', {}, function(data)
+{
+    $("#device-time").text(data.time)
+}
+)
+// use ajax to get page updates
+var time_refresh = setInterval(
+function ()
+{
+$.getJSON('/time', {}, function(data)
+{
+    //update time here:
+    $("#device-time").text(data.time)
+    
+}
+)
+// every 10secs
+}, 10000); 
+</script>
 {% endblock %}

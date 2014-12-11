@@ -4,6 +4,7 @@ from wtforms import Form,StringField,HiddenField,TextAreaField, BooleanField,Int
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from flask.ext.admin import expose
 import logging, datetime, ast
+from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
 
@@ -154,10 +155,39 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         return redirect('/phenocam')
         
     def do_status(self):
-        from flask import flash, redirect
-        flash("Status update Requested")
-        return redirect('/phenocam')   
-        
+        from flask import Markup
+        content = Markup("<div class='panel panel-default'>")
+        info = self.status()
+        err = info.get('Error', None)
+        rgb = info.get('rgb', None)        
+        nir = info.get('nir', None)   
+        if err is not None: 
+            content += Markup("<div class='panel-body'>")
+            estr = "<strong> %s </strong><br/>" %err
+            content += Markup(estr)
+            traceback = info.get("Traceback", "No Trace Available")
+            traceback = traceback.replace('\n', '<br />')
+            content += Markup(traceback)
+            content+=Markup("</div>")
+        else:
+            #build a pretty table from rgb, nir info
+            table= OrderedDict()
+            table['tableo']="<table class='table'>"
+            table['header']="<thead><tr><th>&nbsp</th><th>RGB</th><th>NIR</th></tr></thead>"
+            table['tbodyo']='<tbody>'
+            for sens in (rgb,nir):
+                for k,v in sens.iteritems():
+                    if k not in table.keys():
+                        table[k]="<tr><td>%s</td><td>%s</td>" %(k,v)
+                    else:
+                        table[k]+="<td>%s</td></tr>" %str(v)
+            table['tbodyc']="</tbody>"
+            table['tablec']="</table>"
+            for k,v in table.iteritems():
+                content+=Markup(v+'\n')
+            
+        content+=Markup("</div>")
+        return content
         
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):

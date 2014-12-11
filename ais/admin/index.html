@@ -1,7 +1,4 @@
 {% extends "admin/master.html" %}
-{% block head %}
-<META HTTP-EQUIV="refresh" CONTENT="60">
-{% endblock %}
 
 {% block body%}
 <div id='server_ctl' class='panel 
@@ -11,7 +8,10 @@
 				panel-danger
 			{% endif %}
 '>
-	<div class="panel-heading"><div class="panel-title">Server Status and Control</div></div>
+	<div class="panel-heading">
+        <div class="panel-title">Server Status and Control</div>
+
+        </div>
 	<div class="panel-body">
 		<div id='server_status' class='pull-left'>
 			{% if server_status %}
@@ -35,11 +35,11 @@
 </div>
 <div id="widgets" class="container">
 	{% for (name,widget,url) in widgets %}
-	<div class="widget panel panel-default">
+	<div class="widget panel panel-default" >
 		<div class="panel-heading">
 			<div class='panel-title'>{{name}}</div>
 		</div>
-		<div class="panel-body">
+		<div class="panel-body" id={{name}}>
 			{{widget}}
 		</div>
 		{%if url %}
@@ -56,5 +56,26 @@
 {{super()}}
 <script>
 	$('#sched_jobs').tooltip()
+
+// use ajax to get page updates
+
+var auto_update = setInterval(
+function ()
+    {
+        $.getJSON('/widgets', {}, function(data)
+            {
+            //update time here:
+            $.each(data.widgets, function(key, widget)
+                {
+                    name = "#"+widget[0]
+                    content = widget[1]
+                    $(name).html(content)                
+                }
+            )
+            }
+        )
+// every 60secs
+    }
+, 60000); 
 </script>
 {% endblock %}

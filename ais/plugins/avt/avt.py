@@ -393,19 +393,20 @@ class AVT(PoweredTask):
             except:
                 logger.error("Plugin %s is not available" %relay_name)
 
+#    This may be causing problems for garbage collection 
+#    def __del__(self):
+#        #This function should disconnect from the Vimba Camera
+#        if self._camera is not None:
 #
-    def __del__(self):
-        #This function should disconnect from the Vimba Camera
-        if self._camera is not None:
-
-            if self._frame is not None:
-                self._frame.revokeFrame()
-                self._frame = None
-
-            self._camera.closeCamera()
-            
-        if self._vimba is not None:
-            self._vimba.shutdown()
+#            if self._frame is not None:
+#                self._frame.revokeFrame()
+#                self._frame = None
+#
+#            self._camera.closeCamera()
+#                        
+#            
+#        if self._vimba is not None:
+#            self._vimba.shutdown()
          
     def _refreshFrameStats(self):
         self.width = self.getProperty("Width")

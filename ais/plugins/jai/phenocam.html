@@ -17,6 +17,22 @@
   <li><a href="#run" role="tab" data-toggle="tab">Create Run Settings</a></li>
 </ul>
 
+<!-- status Modal -->
+<div class="modal fade" id="status-modal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+        <h4 class="modal-title" id="myModalLabel">Status Results</h4>
+      </div>
+      <div class="modal-body text-center" id="status_report">
+        <img src="/static/ajax-loader.gif">
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <div class="tab-content">
 
     <div class="tab-pane active" id="main">
@@ -35,7 +51,7 @@
         		</div>
         		<div id='server_ctl_btns'  class='pull-right'>
         				<a class="btn btn-primary" href="/phenocam/?action=reinit"><span class="glyphicon glyphicon-wrench"></span> Initalize</a>
-                              <a class="btn btn-primary" href="/phenocam/?action=status"><span class="glyphicon glyphicon-tasks"></span> Status</a>
+                              <a  class="btn btn-primary" data-toggle="modal" data-target="#status-modal"><span class="glyphicon glyphicon-tasks"></span> Status</a>
         				<a class="btn btn-primary" href="/phenocam/?action=test"><span class="glyphicon glyphicon-picture"></span> Test</a>
         		</div>
         	</div>
@@ -69,8 +85,34 @@
   {{ super() }}
   {{ lib.form_js() }}
 <script>
+
   $(function () {
     $('#myTab a[href="#{{active_tab}}"]').tab('show')
   })
+
+  var status_modal_call = false
+  $('#status-modal').on('show.bs.modal', function()
+    {
+        if (!status_modal_call){
+            status_modal_call = true
+            $('#status_report').prepend("<h4>Waiting for camera status....</h4>")
+            $.get('/phenocam?action=status', function(data)
+                {
+                  $('#status_report').html(data) 
+                  status_modal_call=false 
+                }
+            )         
+        }
+    }
+  )
+
+  $('#status-modal').on('hide.bs.modal', function()
+    {
+        if(!status_modal_call){
+            $('#status_report').html("<img src='/static/ajax-loader.gif'>")
+        }
+    }
+
+  )
 </script>
 {% endblock %}

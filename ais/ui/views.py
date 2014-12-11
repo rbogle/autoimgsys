@@ -38,15 +38,19 @@ class DashboardView(AdminIndexView):
     @expose('/')
     @expose('/<action>')
     def index(self,action=None):
-        now = datetime.datetime.now()
+        now = datetime.datetime.now().ctime()
+                    
         if action=='resume':
             rtn = flask.aisapp.resume()
         elif action=='pause':
             rtn = flask.aisapp.pause()
+        elif action=='time':
+            return jsonify(time=now)
+        elif action=='widgets':
+            return jsonify(widgets=self.get_plugin_widgets())
         elif action is not None:
             return redirect('/')
-        elif action=='time':
-            return jsonify(now)
+
         status,jobs,msg = flask.aisapp.get_status()
         w = self.get_plugin_widgets()
         return self.render('admin/index.html', 
