@@ -63,7 +63,7 @@ class JAI_AD80GE(PoweredTask):
                 offset_x (opt) : requested image x offset 0 default
                 offset_y (opt) : requested image y offest 0 default       
         """
-        self.last_run = kwargs
+
         try: # we dont want to crash the ais_service so just log errors
        
            #we need to start camerasys as this is task callback
@@ -319,8 +319,9 @@ class JAI_AD80GE(PoweredTask):
         
         sensors = kwargs.get('sensors', None)
         self._sensors = dict()
-        self.last_run = None
-        
+        self.last_run = dict()
+        self.last_run['success'] = False
+        self.last_run['error_msg']= "No run attempted"
         if sensors is not None:
             for s in sensors :
                 name =s.get("name", None)
