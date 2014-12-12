@@ -149,7 +149,7 @@ class JAI_AD80GE(PoweredTask):
                 pass
             logger.error( str(e))
             logger.error( traceback.format_exc())
-            status['Error'] = str(e)
+            status['Error'] = "Error Encountered:" if str(e)=="" else str(e)
             status['Traceback'] = traceback.format_exc()
             
         return status

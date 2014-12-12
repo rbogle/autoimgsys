@@ -20,25 +20,33 @@
 
 {% block tail %}
 {{super()}}
+<script src="/static/js/idle-timer.min.js"></script>
 <script>
+
+$(function() {
+    $(document).idleTimer(5000); 
+
+});
+
 // load time data into #device-time
 $.getJSON('/time', {}, function(data)
 {
-    $("#device-time").text(data.time)
+    $("#device-time").text(data.time);
 }
 )
 // use ajax to get page updates
 var time_refresh = setInterval(
 function ()
 {
-$.getJSON('/time', {}, function(data)
-{
-    //update time here:
-    $("#device-time").text(data.time)
-    
-}
-)
-// every 10secs
-}, 10000); 
+    if(!( $.idleTimer("isIdle"))){
+        $.getJSON('/time', {}, function(data)
+        {
+            //update time here:
+            $("#device-time").text(data.time);
+            
+        } )
+    }
+// every 1 secs
+}, 1000); 
 </script>
 {% endblock %}

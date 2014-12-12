@@ -55,27 +55,42 @@
 {% block tail %}
 {{super()}}
 <script>
-	$('#sched_jobs').tooltip()
+
+function update_widgets(){
+    $.getJSON('/widgets', {}, function(data)
+        {
+        //update time here:
+        $.each(data.widgets, function(key, widget)
+            {
+                name = "#"+widget[0]
+                content = widget[1]
+                $(name).html(content)                
+            }
+        )
+        }
+    )
+}
+
+// config tooltips
+$('#sched_jobs').tooltip()
 
 // use ajax to get page updates
-
 var auto_update = setInterval(
 function ()
     {
-        $.getJSON('/widgets', {}, function(data)
-            {
-            //update time here:
-            $.each(data.widgets, function(key, widget)
-                {
-                    name = "#"+widget[0]
-                    content = widget[1]
-                    $(name).html(content)                
-                }
-            )
-            }
-        )
+        if(!( $.idleTimer("isIdle"))){
+            update_widgets();
+        } 
 // every 60secs
     }
 , 60000); 
+
+//listen for page activity and reload widgets
+
+$( document ).on( "active.idleTimer", function(event, elem, obj, triggerevent){
+        update_widgets();
+});
+
+
 </script>
 {% endblock %}

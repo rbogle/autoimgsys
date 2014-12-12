@@ -26,7 +26,7 @@
         <h4 class="modal-title" id="myModalLabel">Status Results</h4>
       </div>
       <div class="modal-body text-center" id="status_report">
-        <img src="/static/ajax-loader.gif">
+        <img src="/static/images/ajax-loader.gif">
       </div>
     </div>
   </div>
@@ -84,13 +84,16 @@
 {% block tail %}
   {{ super() }}
   {{ lib.form_js() }}
+
 <script>
 
   $(function () {
     $('#myTab a[href="#{{active_tab}}"]').tab('show')
   })
 
+  //flag to tell if we are waiting on a callback
   var status_modal_call = false
+  // send call to run test, dont re-call if still waiting on previous
   $('#status-modal').on('show.bs.modal', function()
     {
         if (!status_modal_call){
@@ -105,11 +108,11 @@
         }
     }
   )
-
+  //let the modal hide but dont reset it if call hasn't returned
   $('#status-modal').on('hide.bs.modal', function()
     {
         if(!status_modal_call){
-            $('#status_report').html("<img src='/static/ajax-loader.gif'>")
+            $('#status_report').html("<img src='/static/images/ajax-loader.gif'>")
         }
     }
 
