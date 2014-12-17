@@ -19,6 +19,7 @@ class DashboardView(AdminIndexView):
         each plugin should mark themselves as viewable
         and implement the render_view method to return html content. 
     '''
+    
     def __init__(self, name=None, category=None, endpoint=None, url=None, template='admin/index.html'):
         super(DashboardView, self).__init__(name, category, endpoint, url, template)
         self.plugins = list()
@@ -38,8 +39,7 @@ class DashboardView(AdminIndexView):
     @expose('/')
     @expose('/<action>')
     def index(self,action=None):
-        now = datetime.datetime.now().ctime()
-                    
+        now = datetime.datetime.now().strftime("%a, %b %d. %Y %H:%M")        
         if action=='resume':
             rtn = flask.aisapp.resume()
         elif action=='pause':
@@ -56,7 +56,11 @@ class DashboardView(AdminIndexView):
         return self.render('admin/index.html', 
                           server_status=status, server_status_msg=msg, 
                           jobs_scheduled=jobs, widgets=w, time=now)
-                      
+class LogView(ModelView):
+    can_edit = False
+    can_create = False
+    can_delete = False
+    column_list =('created', 'level','logger', 'module', 'msg')                
         
 class PluginView(ModelView):
     '''

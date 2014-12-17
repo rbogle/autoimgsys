@@ -16,18 +16,10 @@
 from ais.plugins.jai.aravis import *
 from ais.lib.task import PoweredTask
 from ais.lib.relay import Relay
-import pprint
-import logging
-import time
-import numpy as np
-import cv2
-import ctypes
-import traceback
-import datetime
-import os
+import pprint, time, cv2, traceback, datetime, os
 from collections import OrderedDict
 
-logger = logging.getLogger(__name__)
+#logger = logging.getLogger(__name__)
 
 class Sensor(object):
     
@@ -97,12 +89,12 @@ class JAI_AD80GE(PoweredTask):
             self.stop()        
         except Exception as e:
             self.stop()
-            logger.error( str(e))
-            logger.error( traceback.format_exc())
+            self.logger.error( str(e))
+            self.logger.error( traceback.format_exc())
             self.last_run['success'] = False
             self.last_run['error_msg'] = str(e)
             raise e 
-        logger.info("JAI_AD80GE ran its task")
+        self.logger.info("JAI_AD80GE ran its task")
         self.last_run['success'] = True     
         
     def status(self):
@@ -147,24 +139,24 @@ class JAI_AD80GE(PoweredTask):
                 self.stop()
             except:
                 pass
-            logger.error( str(e))
-            logger.error( traceback.format_exc())
+            self.logger.error( str(e))
+            self.logger.error( traceback.format_exc())
             status['Error'] = "Error Encountered:" if str(e)=="" else str(e)
             status['Traceback'] = traceback.format_exc()
             
         return status
         
     def configure(self, **kwargs):
-        logger.info("Configuration called")
+        self.logger.info("Configuration called")
         sensors = kwargs.get('sensors',None)
         if sensors is not None:
             self._sensors = dict()
-            logger.info("Setting sensors for JAI camera")
+            self.logger.info("Setting sensors for JAI camera")
             for s in sensors :
                 
                 name =s.get("name", None)
                 self._sensors[name] = Sensor(**s)
-                logger.info("Sensor: %s loaded" %name)
+                self.logger.info("Sensor: %s loaded" %name)
             self.initalized = True 
             
         self._powerdelay = kwargs.get('relay_delay', 15)
@@ -175,12 +167,12 @@ class JAI_AD80GE(PoweredTask):
             #TODO what if we're not running under the ais_service?
             self._powerctlr = self.manager.getPluginByName(relay_name, 'Relay').plugin_object
             if self._powerctlr is not None:
-                logger.info("JAI power controller set to use: %s on port %s with delay %s" 
+                self.logger.info("JAI power controller set to use: %s on port %s with delay %s" 
                     %(relay_name, self._powerport, self._powerdelay))
             else:
-                logger.error("JAI power controller is not set!")
+                self.logger.error("JAI power controller is not set!")
         if not isinstance(self._powerctlr, Relay):
-            logger.error("Plugin %s is not available" %relay_name)          
+            self.logger.error("Plugin %s is not available" %relay_name)          
   
         
     def get_configure_properties(self):
@@ -223,16 +215,16 @@ class JAI_AD80GE(PoweredTask):
    
     def start(self):       
         if not self._started: 
-            logger.info("JAI_AD80GE is powering up")
+            self.logger.info("JAI_AD80GE is powering up")
             if self._powerctlr is not None:        
                 self._power(True)
-                logger.debug("Power delay for %s seconds" %self._powerdelay)
+                self.logger.debug("Power delay for %s seconds" %self._powerdelay)
                 time.sleep(self._powerdelay)
-                logger.debug("Power delay complete, connecting to camera")
+                self.logger.debug("Power delay complete, connecting to camera")
             self._ar = Aravis()
             for sens in self._sensors.itervalues():
                 sens.cam = self._ar.get_camera(sens.mac) 
-            logger.info("JAI_AD80GE started")
+            self.logger.info("JAI_AD80GE started")
             self._started = True       
             
     def stop(self):
@@ -247,12 +239,12 @@ class JAI_AD80GE(PoweredTask):
         
         if self._powerctlr is not None:        
             self._power( False)
-            logger.info("JAI_AD80GE is powering down")        
+            self.logger.info("JAI_AD80GE is powering down")        
         self._started = False 
             
     def save_image(self, name, imgtype=".tif"):
         if not self._started:
-            logger.error("Camera device must be started before capture")
+            self.logger.error("Camera device must be started before capture")
             return None
         else:
             for sens in self._sensors.itervalues():
@@ -268,7 +260,7 @@ class JAI_AD80GE(PoweredTask):
                 #TODO test name for file extension first?
                 #TODO add metadata?
                 iname = name+ "_"+sens.name+"." + imgtype
-                logger.debug("Jai capturing and saving image as: %s"%iname)
+                self.logger.debug("Jai capturing and saving image as: %s"%iname)
                 cv2.imwrite(iname, data)
     
     def configure_sensor(self,sensor, **kwargs ):
@@ -285,7 +277,7 @@ class JAI_AD80GE(PoweredTask):
                   elif(stype=="float"):    
                       sensor.cam.set_float_feature(sname, sval)
         else:
-            logger.error("JAI_AD80GE is not started")
+            self.logger.error("JAI_AD80GE is not started")
             raise Exception("JAI Camera is not started.")
         
     def configure_shot(self, **kwargs):
@@ -300,7 +292,7 @@ class JAI_AD80GE(PoweredTask):
                                       kwargs.get("width", max_width),
                                       kwargs.get("weight", max_height))
         else:
-            logger.error("JAI_AD80GE is not started")
+            self.logger.error("JAI_AD80GE is not started")
             raise Exception("JAI Camera is not started.")
        
     def add_sensor(self, name, macaddress):
@@ -322,6 +314,8 @@ class JAI_AD80GE(PoweredTask):
         self.last_run = dict()
         self.last_run['success'] = False
         self.last_run['error_msg']= "No run attempted"
+        
+        #Look for sensor config
         if sensors is not None:
             for s in sensors :
                 name =s.get("name", None)
@@ -338,16 +332,16 @@ class JAI_AD80GE(PoweredTask):
                     raise TypeError
             except:        
                 self._powerctlr = None
-                logger.error("Could not marshall Relay Object")
+                self.logger.error("Could not marshall Relay Object")
         elif 'relay_name' in kwargs:
             relay_name = kwargs.get('relay_name', None)
             try:
                 self._powerctlr = self.manager.getPluginByName(relay_name, 'Relay').plugin_object
                 if not isinstance(self._powerctlr, Relay):
                     self._powerctlr = None
-                    logger.error("Plugin %s is not a Relay Object" %relay_name)   
+                    self.logger.error("Plugin %s is not a Relay Object" %relay_name)   
             except:
-                logger.error("Plugin %s is not available" %relay_name)
+                self.logger.error("Plugin %s is not available" %relay_name)
                     
     def _capture_frame(self, sensor):
         frame = None
@@ -356,7 +350,7 @@ class JAI_AD80GE(PoweredTask):
             frame = sensor.cam.get_frame()
             sensor.cam.stop_acquisition()
         else:
-            logger.error("Capture_Frame failed not a valid sensor")
+            self.logger.error("Capture_Frame failed not a valid sensor")
             raise Exception ("Invalid Sensor Object")
         return frame 
                
@@ -379,7 +373,7 @@ class JAI_AD80GE(PoweredTask):
                 os.makedirs(imgpath)
             except OSError:
                 if not os.path.isdir(imgpath):
-                    logger.error("Jai cannot create directory structure for image storage")    
+                    self.logger.error("Jai cannot create directory structure for image storage")    
         #if asked to make more subdirs by date do it:            
         if split is not None:
             imgpath = self._split_dir(now,imgpath,split,nest)
@@ -412,7 +406,7 @@ class JAI_AD80GE(PoweredTask):
                 os.makedirs(root)
             except OSError:
                 if not os.path.isdir(root):
-                    logger.error("Jai cannot create directory structure for image storage")
+                    self.logger.error("Jai cannot create directory structure for image storage")
         return root
             
 if __name__ == "__main__":

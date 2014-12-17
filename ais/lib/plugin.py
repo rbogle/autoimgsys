@@ -4,8 +4,6 @@ from flask.ext.admin import BaseView, expose
 from flask import render_template
 import logging, inspect, os.path
 
-logger = logging.getLogger(__name__)
-
 class PluginObj(IPlugin, BaseView):
     
     def __init__(self, **kwargs):
@@ -13,11 +11,13 @@ class PluginObj(IPlugin, BaseView):
         IPlugin.__init__(self)
         BaseView.__init__(self, **kwargs)
         self.manager = PluginManagerSingleton.get()
-        
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.viewable = False
         self.widgetized = False
         self.enabled = False
-        
+        self.use_filestore = False
+        self.use_sqllog = False
+    
         #set defaults for template paths
         # ais/plugins/name/widget.html
         # ais/plugins/name/index.html
@@ -34,7 +34,7 @@ class PluginObj(IPlugin, BaseView):
             pass
         else:
             self.app = self.manager.app
-
+        self.logger.debug("%s Init finished", self.__class__.__name__)
 
     def is_accessible(self):
         '''
@@ -44,11 +44,11 @@ class PluginObj(IPlugin, BaseView):
         
     def activate(self):
         super(Plugin, self).activate()
-        logger.info("Plugin: %s activated" % self.__class__.__name__)
+        self.logger.info("Plugin: %s activated" % self.__class__.__name__)
         
     def deactivate(self):
         super(Plugin, self).deactivate()
-        logger.info("Plugin: %s deactivated" % self.__class__.__name__)
+        self.logger.info("Plugin: %s deactivated" % self.__class__.__name__)
         
     def widget_view(self):
         template = self.widget_template

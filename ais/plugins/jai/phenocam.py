@@ -6,7 +6,7 @@ from flask.ext.admin import expose
 import logging, datetime, ast
 from collections import OrderedDict
 
-logger = logging.getLogger(__name__)
+#logger = logging.getlogger("PhenoCam")
 
 class RunConfigListForm(Form):
     id = HiddenField()
@@ -37,16 +37,17 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                **kwargs Named arguments to configure the camera(s)
                    Sensors: dict of name: mac address for each of the sensors on board
         """
-        logger.debug("Phenocam __init__ called")
         super(PhenoCam,self).__init__(**kwargs) 
         self.viewable = True
         self.widgetized = True
         self.view_template = self.path+'/phenocam.html'
         self.widget_template = self.path+'/pheno_widget.html'
+        self.use_filestore = True
+        self.use_sqllog = True
         self.last_run={}
         self.last_run['success'] = False
         self.last_run['error_msg'] = "No runs attempted"
-        
+
         
     def update_init_model(self, form):
         from flask import flash,request

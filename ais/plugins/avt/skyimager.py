@@ -5,9 +5,9 @@ from ais.ui.models import Config, Plugin
 from wtforms import Form,StringField,HiddenField,TextAreaField, BooleanField,IntegerField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from flask.ext.admin import expose
-import logging, datetime, ast
+import  ast
 
-logger = logging.getLogger(__name__)
+
 
 class RunConfigListForm(Form):
     id = HiddenField()
@@ -36,10 +36,11 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
                **kwargs Named arguments to configure the camera(s)
                    Sensors: dict of name: mac address for each of the sensors on board
         """
-        logger.debug("SkyImager __init__ called")
         super(SkyImager,self).__init__(**kwargs) 
         self.viewable = True
         self.widgetized = True
+        self.use_filestore = True
+        self.use_sqllog = True
         self.view_template = self.path+'/skyimager.html'
         self.widget_template = self.path+'/skyimg_widget.html'
         self.last_run={}
@@ -47,7 +48,7 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
         self.last_run['error_msg'] = "No runs attempted"
 
     def update_init_model(self, form):
-        from flask import flash,request
+        from flask import flash
         #load init config stored
         icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
         if icfg is None:
@@ -96,7 +97,7 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
         
     def update_run_model(self,form):
         
-        from flask import flash,request
+        from flask import flash
         if form.get('name') != "":
             icfg = Config.query.filter_by(plugin=self.name, role="Runtime", name=form.get("name")).first()
             if icfg is None:

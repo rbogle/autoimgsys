@@ -24,29 +24,38 @@
 <script>
 
 $(function() {
-    $(document).idleTimer(5000); 
+    $(document).idleTimer(30000); 
 
 });
 
-// load time data into #device-time
-$.getJSON('/time', {}, function(data)
-{
-    $("#device-time").text(data.time);
+function update_time(){
+    $.getJSON('/time', {}, function(data)
+    {
+        //update time here:
+        $("#device-time").text(data.time);
+        
+    } )
 }
-)
+
+$(function(){
+    update_time();
+});
+
 // use ajax to get page updates
 var time_refresh = setInterval(
 function ()
 {
     if(!( $.idleTimer("isIdle"))){
-        $.getJSON('/time', {}, function(data)
-        {
-            //update time here:
-            $("#device-time").text(data.time);
-            
-        } )
+        update_time();
     }
-// every 1 secs
-}, 1000); 
+// every  60secs
+}, 60000); 
+
+//listen for page activity and reload time
+
+$( document ).on( "active.idleTimer", function(event, elem, obj, triggerevent){
+        update_time();
+});
+
 </script>
 {% endblock %}

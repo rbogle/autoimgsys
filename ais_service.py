@@ -13,13 +13,16 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from ais.lib.task import Task, PoweredTask
 from ais.lib.listener import Listener
 from ais.lib.relay import Relay
+from ais.lib.sqllog import SQLAlchemyHandler
 from ais.ui import config, flask, db
 from ais.ui.models import *
 from ais.ui.views import *
 
 #standard deps
-import os, copy, logging
+import os, copy, logging, logging.config
 
+#logging config
+logging.config.dictConfig(config.LOGGING)
 logger = logging.getLogger(__name__)
 
 class AISApp(object):
@@ -304,10 +307,10 @@ class AISApp(object):
         self.flask = flask
         #pass aisapp instance back to flask for syncing
         flask.aisapp = self
-        
-        logging.debug("Flask root %s" %self.flask.root_path)
+        logger.info("AIS servic starting up!")
+        logger.debug("Flask root %s" %self.flask.root_path)
         self.db = db
-        self.database_file = config.DATABASE_PATH+config.DATABASE_FILE
+        self.database_file = config.DATABASE_PATH+config.APP_DATABASE_FILE
         
             
         #setup plugin management and discovery
@@ -368,19 +371,31 @@ class AISApp(object):
 
         #Make Plugins menu
         #find plugins with views and widgets available:
+        logger.debug("Setting up plugins")
         for pi in plugin_manager.getAllPlugins():
+            logger.debug("Processing Plugin %s", pi.name)
             po = pi.plugin_object
             po.name = pi.name
-            #give each plugin a directory in the filestore
-            logger.debug("Creating plugin filestorage structures")
-            po.filestore = config.FILESTORE+"/"+pi.name
-            if not os.path.isdir(po.filestore):    
-                try:
-                    logger.debug("Attempting to makedir: %s" %po.filestore)
-                    os.makedirs(po.filestore)
-                except OSError:
-                    if not os.path.isdir(po.filestore):
-                        logger.error("Ais_Service cannot mkdir %s" %po.filestore)
+            
+            sqlloghdlr = SQLAlchemyHandler()
+            sqlloghdlr.setLevel(logging.DEBUG)
+            sqlloghdlr.setFormatter(logging.Formatter())
+            #give each plugin its own sqllog in its own table 
+            if po.use_sqllog:            
+                logger.debug("Config sqllog handler to plugin logger")
+                po.logger.addHandler(sqlloghdlr)
+            #give each plugin a directory in the filestore if they want it. 
+            if po.use_filestore :
+                logger.debug("Creating plugin filestorage structures")
+                po.filestore = config.FILESTORE+"/"+pi.name
+                if not os.path.isdir(po.filestore):    
+                    try:
+                        logger.debug("Attempting to makedir: %s" %po.filestore)
+                        os.makedirs(po.filestore)
+                    except OSError:
+                        if not os.path.isdir(po.filestore):
+                            po.filestore = None
+                            logger.error("Ais_Service cannot mkdir %s" %po.filestore)
                         
             logger.debug("Assessing Plugin: %s for UI" %pi.name)
             if po.widgetized:
@@ -391,7 +406,7 @@ class AISApp(object):
                 logger.debug("Plugin Viewable: %s" %pi.name)
                 po.category= "Plugins"
                 self.ui.add_view(po) 
-        
+
         
         self.ui.add_view(FileAdmin(config.FILESTORE, name="Data Files"))
         #Schedule Settings menu
@@ -399,13 +414,14 @@ class AISApp(object):
         self.ui.add_view(ModelView(Schedule,db.session, name = 'Schedules',category='Schedule Settings'))
         self.ui.add_view(ActionView(Action,db.session,name='Actions', category='Schedule Settings'))   
         #add Advanced Menu
-        self.ui.add_view(ModelView(User,db.session, category='Advanced')) 
+        self.ui.add_view(ModelView(User,db.session, name='Users', category='Advanced')) 
         self.ui.add_view(PluginView(Plugin,db.session,name='Plugins', category='Advanced'))
-        self.ui.add_view(ConfigView(Config,db.session,name='Configs', category='Advanced'))
+        self.ui.add_view(ConfigView(Config,db.session,name='Plugin Configs', category='Advanced'))        
+        self.ui.add_view(LogView(Log,db.session, name='Plugin Logs', category='Advanced')) 
+        
 
 if __name__=='__main__':
-    #logging config
-    logging.basicConfig(level=logging.DEBUG)
+
     #setup and start the app
     app = AISApp()    
     app.run()

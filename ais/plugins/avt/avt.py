@@ -46,16 +46,10 @@
 
 from ais.lib.task import PoweredTask
 from ais.lib.relay import Relay
-import logging
-import time
+import time,cv2,traceback,datetime,os
 import numpy as np
-import cv2
-import traceback
-import datetime
-import os
 from pymba import *
 
-logger = logging.getLogger(__name__)
 
 class AVT(PoweredTask):
     """AVT class provides interfaces for control of generic AVT cameras.
@@ -129,12 +123,12 @@ class AVT(PoweredTask):
             
         except Exception as e:
             self.stop()
-            logger.error( str(e))
-            logger.error( traceback.format_exc())
+            self.logger.error( str(e))
+            self.logger.error( traceback.format_exc())
             self.last_run['success'] = False
             self.last_run['error_msg'] = str(e)
             raise e 
-        logger.info("AVT driver ran its task")
+        self.logger.info("AVT driver ran its task")
         self.last_run['success'] = True  
         
     def configure(self, **kwargs):
@@ -145,7 +139,7 @@ class AVT(PoweredTask):
             self._powerctlr = self.manager.getPluginByName(relay_name, 'Relay').plugin_object
         if not isinstance(self._powerctlr, Relay):
             self._powerctlr = None
-            logger.error("PowerController is not a Relay Object")          
+            self.logger.error("PowerController is not a Relay Object")          
         self.initalized = True   
         
     def get_configure_properties(self):
@@ -189,7 +183,7 @@ class AVT(PoweredTask):
         if not self._started: 
             if self._powerctlr is not None:        
                 self._power(True)
-                logger.info("AVT performing delay for powerup waiting %s sec."%self._powerdelay)
+                self.logger.info("AVT performing delay for powerup waiting %s sec."%self._powerdelay)
                 time.sleep(self._powerdelay)
                
             self._setupVimba()
@@ -281,7 +275,7 @@ class AVT(PoweredTask):
         # Bayer_GB2BGR  used to get acceptable 3-band 16-bit format
         # for cv2.imwrite. this is easiest lib/method to keep 16bit format 
         pxfmt = self.getProperty("PixelFormat")
-        logger.debug("AVT capturing as: %s"%pxfmt)  
+        self.logger.debug("AVT capturing as: %s"%pxfmt)  
         
         if "BayerGB" in pxfmt:                  
             rgb = cv2.cvtColor(data, cv2.COLOR_BAYER_GB2RGB)
@@ -289,7 +283,7 @@ class AVT(PoweredTask):
             rgb = data
         #TODO test for file extension first?
         name += "." + imgtype
-        logger.debug("AVT capturing and saving image as: %s"%name)
+        self.logger.debug("AVT capturing and saving image as: %s"%name)
         cv2.imwrite(name, rgb)           
           
     def listAllCameras(self):
@@ -382,16 +376,16 @@ class AVT(PoweredTask):
                     raise TypeError
             except:        
                 self._powerctlr = None
-                logger.error("Could not marshall Relay Object")
+                self.logger.error("Could not marshall Relay Object")
         elif 'relay_name' in kwargs:
             relay_name = kwargs.get('relay_name', None)
             try:
                 self._powerctlr = self.manager.getPluginByName(relay_name, 'Relay').plugin_object
                 if not isinstance(self._powerctlr, Relay):
                     self._powerctlr = None
-                    logger.error("Plugin %s is not a Relay Object" %relay_name)   
+                    self.logger.error("Plugin %s is not a Relay Object" %relay_name)   
             except:
-                logger.error("Plugin %s is not available" %relay_name)
+                self.logger.error("Plugin %s is not available" %relay_name)
 
 #    This may be causing problems for garbage collection 
 #    def __del__(self):
@@ -477,7 +471,7 @@ class AVT(PoweredTask):
                 os.makedirs(imgpath)
             except OSError:
                 if not os.path.isdir(imgpath):
-                    logger.error("AVT cannot create directory structure for image storage")    
+                    self.logger.error("AVT cannot create directory structure for image storage")    
         #if asked to make more subdirs by date do it:            
         if split is not None:
             imgpath = self._split_dir(now,imgpath,split,nest)
@@ -510,7 +504,7 @@ class AVT(PoweredTask):
                 os.makedirs(root)
             except OSError:
                 if not os.path.isdir(root):
-                    logger.error("AVT cannot create directory structure for image storage")
+                    self.logger.error("AVT cannot create directory structure for image storage")
         return root
     
     def _configShot(self, **kwargs):

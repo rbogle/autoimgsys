@@ -1,5 +1,5 @@
 [Core]
-Name = Test_Listener
+Name = TestListener
 Module = test_listener
 
 [Documentation]

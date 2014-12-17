@@ -10,12 +10,9 @@
 
 from ais.lib.task import Task
 from ais.ui.models import Config
-from wtforms import Form, StringField, HiddenField, FormField, FieldList, TextAreaField
+from wtforms import Form, StringField, HiddenField, TextAreaField
 from flask.ext.admin import expose
-import logging, datetime, ast
-
-logger = logging.getLogger(__name__)
-
+import datetime, ast
    
 class RunArgsForm(Form):
     id = HiddenField()
@@ -32,17 +29,17 @@ class Test_Task(Task):
     
     def run(self, **kwargs):     
         self.last_run = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')	              
-        logger.info(self._print_keyword_args("Test_Task Run called", **kwargs)) 
+        self.logger.info(self._print_keyword_args("Test_Task Run called", **kwargs)) 
     
     def configure(self, **kwargs):
-        logger.debug(self._print_keyword_args("Init called", **kwargs)) 
+        self.logger.debug(self._print_keyword_args("Init called", **kwargs)) 
         self.initialized = True
           
     def __init__(self, **kwargs):
-        Task.__init__(self,**kwargs)
+        super(Test_Task,self).__init__(**kwargs) 
         self.widgetized = True
         self.viewable = True
-        logger.debug(self._print_keyword_args("Init called", **kwargs)) 
+        self.logger.debug(self._print_keyword_args("Init called", **kwargs)) 
         
     def _print_keyword_args(self, msg, **kwargs):
         # kwargs is a dict of the keyword args passed to the function

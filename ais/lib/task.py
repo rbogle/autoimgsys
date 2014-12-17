@@ -1,9 +1,9 @@
 from plugin import PluginObj
 from relay import Relay
-import logging
+#import logging
 import importlib
 
-logger = logging.getLogger(__name__)
+#logger = logging.getLogger(__name__)
 
 class Task(PluginObj):
 
@@ -48,11 +48,11 @@ class Task(PluginObj):
             obj = obj_cls()
             
         except AssertionError:
-            logger.error("Specified class %s is not a Relay" % obj_args.get('class'))
+            self.logger.error("Specified class %s is not a Relay" % obj_args.get('class'))
             
         except Exception as e:   
-            logger.error("error: %s" % type(e))
-            logger.error("Could not build class %s" % obj_args.get('class'))
+            self.logger.error("error: %s" % type(e))
+            self.logger.error("Could not build class %s" % obj_args.get('class'))
         
         return obj
         
@@ -74,7 +74,7 @@ class PoweredTask(Task):
             try:
                 self._powerctlr.set_port(self._powerport, powerstate)
             except Exception as e:
-                logger.error(str(e)) 
+                self.logger.error(str(e)) 
                 raise e                
         else:        
-            logger.error("No power controller is configured.")
+            self.logger.error("No power controller is configured.")

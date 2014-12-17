@@ -9,7 +9,10 @@ flask.template_folder = flask.root_path
 #flask.static_folder = flask.root_path+"/static"
 
 config.DATABASE_PATH = flask.root_path+config.DATABASE_PATH
-config.SQLALCHEMY_DATABASE_URI=config.DATABASE_PREFIX+config.DATABASE_PATH+config.DATABASE_FILE
+config.SQLALCHEMY_DATABASE_URI=config.DATABASE_PREFIX+config.DATABASE_PATH+config.APP_DATABASE_FILE
+config.SQLALCHEMY_BINDS= {
+    'logs': config.DATABASE_PREFIX+config.DATABASE_PATH+config.LOG_DATABASE_FILE
+}
 flask.config.from_object(config)
  
 db = SQLAlchemy(flask)

@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 
 from ais.lib.relay import Relay
-import logging
 from Phidgets.PhidgetException import PhidgetException
 from Phidgets.Devices.InterfaceKit import InterfaceKit
 
-logger = logging.getLogger(__name__)
 
 class Phidget(Relay):
+    
+    def __init__(self, **kwargs):
+        super(Phidget,self).__init__(**kwargs)
+        self.use_sqllog = True
     
     def get_port(self, port):
         rval = -1
@@ -15,7 +17,7 @@ class Phidget(Relay):
             try:
                 rval = self.interfaceKit.getOutputState(port)
             except PhidgetException as e:
-                logger.error("Phidget Exception %i: %s" % (e.code, e.details))
+                self.logger.error("Phidget Exception %i: %s" % (e.code, e.details))
                 raise e
             finally:
                 self.disconnect()
@@ -26,7 +28,7 @@ class Phidget(Relay):
             try:
                 self.interfaceKit.setOutputState(port, state)
             except PhidgetException as e:
-                logger.error("Phidget Exception %i: %s" % (e.code, e.details))
+                self.logger.error("Phidget Exception %i: %s" % (e.code, e.details))
                 raise e
             finally:
                 self.disconnect()
@@ -42,15 +44,15 @@ class Phidget(Relay):
             self.interfaceKit.waitForAttach(10000)
             
         except RuntimeError as e:
-            logger.error("Runtime error: %s" % e.message)
+            self.logger.error("Runtime error: %s" % e.message)
             raise e
             
         except PhidgetException as e:
-            logger.error("Phidget Exception %i: %s" % (e.code, e.details))
+            self.logger.error("Phidget Exception %i: %s" % (e.code, e.details))
             try:
                 self.interfaceKit.closePhidget()
             except PhidgetException as e:
-                logger.error("Phidget Exception %i: %s" % (e.code, e.details))
+                self.logger.error("Phidget Exception %i: %s" % (e.code, e.details))
             raise e
             
         return True
@@ -59,5 +61,5 @@ class Phidget(Relay):
         try:
             self.interfaceKit.closePhidget()
         except PhidgetException as e:
-            logger.error("Phidget Exception %i: %s" % (e.code, e.details))
+            self.logger.error("Phidget Exception %i: %s" % (e.code, e.details))
             raise e

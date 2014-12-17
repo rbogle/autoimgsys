@@ -1,9 +1,12 @@
 from flask.ext.sqlalchemy import SQLAlchemy
+import datetime
 from ais.ui import db
 #from sqlalchemy import Column, Integer, String, PickleType, DateTime, Boolean, ForeignKey
 #from sqlalchemy.orm import relationship, backref
 
 # Create user model.
+
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     first_name = db.Column(db.String(100))
@@ -31,7 +34,16 @@ class User(db.Model):
     # Required for administrative interface
     def __unicode__(self):
         return self.username
-        
+
+class Log(db.Model):
+    __bind_key__ = 'logs'
+    id = db.Column(db.Integer, primary_key=True) # auto incrementing
+    logger = db.Column(db.String) # the name of the logger. (e.g. myapp.views)
+    module = db.Column(db.String)
+    level = db.Column(db.String) # info, debug, or error?
+    trace = db.Column(db.String) # the full traceback printout
+    msg = db.Column(db.String) # any custom log you may have included
+    created = db.Column(db.DateTime, default=datetime.datetime.now()) # the current timestamp       
 
 class Schedule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
