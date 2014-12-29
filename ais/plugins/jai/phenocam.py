@@ -1,9 +1,9 @@
 import ais.plugins.jai.jai as jai #inhertiance path due to Yapsy detection rules
-from ais.ui.models import Config, Plugin
+from ais.ui.models import Config, Plugin, Log
 from wtforms import Form,StringField,HiddenField,TextAreaField, BooleanField,IntegerField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from flask.ext.admin import expose
-import logging, datetime, ast
+import ast
 from collections import OrderedDict
 
 #logger = logging.getlogger("PhenoCam")
@@ -50,7 +50,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
 
         
     def update_init_model(self, form):
-        from flask import flash,request
+        from flask import flash
         #load init config stored
         icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
         if icfg is None:
@@ -108,7 +108,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
     
     def update_run_model(self,form):
         
-        from flask import flash,request
+        from flask import flash
         if form.get('name') != "":
             icfg = Config.query.filter_by(plugin=self.name, role="Runtime", name=form.get("name")).first()
             if icfg is None:
@@ -146,7 +146,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
     
     def do_reinit(self):
         from flask import flash, redirect
-        icfg = icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
+        icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
         if icfg is not None:
             kwargs = icfg.args.copy()
             self.configure(**kwargs)
@@ -189,7 +189,20 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             
         content+=Markup("</div>")
         return content
+    
+    def get_logs(self, rargs):
+        from flask import jsonify
+        last = rargs.get("last", -1)
+        logs = Log.query.filter(Log.logger==self.name, Log.id>int(last)).all()
+        #TODO:logs could be None what happens
+        if logs is not None:
+            data = OrderedDict()
+            for log in logs:
+                data[log.id]={'msg':log.msg, 'level':log.level, 
+                    'datetime':log.created, 'module':log.module}
+        return jsonify(logs=data)
         
+            
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):
         
@@ -210,6 +223,8 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                 return self.do_test()   
             if action == "status":
                 return self.do_status()
+            if action == "logs":
+                return self.get_logs(request.args)
         #check for form submit
         if h.is_form_submitted():
             form_data = request.form

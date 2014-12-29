@@ -56,7 +56,14 @@
         		</div>
         	</div>
         </div>
-        
+        <div class="panel panel-default">
+          <div class="panel-heading">
+            <h3 class="panel-title">PhenoCam Logs</h3>
+          </div>
+          <div class="panel-body">
+            <pre id="logs" style="max-height: 30em; overflow-y: auto; tab-size: 4"></pre>
+          </div>
+        </div>
     </div>
     
     <div class="tab-pane" id="init">
@@ -86,36 +93,78 @@
   {{ lib.form_js() }}
 
 <script>
+    //flag to tell if we are waiting on a callback
+    var status_modal_call = false;
+    // keep track of log records loaded so far  
+    var last_log=0;
 
-  $(function () {
-    $('#myTab a[href="#{{active_tab}}"]').tab('show')
-  })
+    // send call to run status, dont re-call if still waiting on previous
+    $('#status-modal').on('show.bs.modal', function()
+        {
+            if (!status_modal_call){
+                status_modal_call = true;
+                $('#status_report').prepend("<h4>Waiting for camera status....</h4>");
+                $.get('/phenocam?action=status', function(data)
+                    {
+                      $('#status_report').html(data) ;
+                      status_modal_call=false ;
+                    }
+                );         
+            }
+        }
+    );
 
-  //flag to tell if we are waiting on a callback
-  var status_modal_call = false
-  // send call to run test, dont re-call if still waiting on previous
-  $('#status-modal').on('show.bs.modal', function()
-    {
-        if (!status_modal_call){
-            status_modal_call = true
-            $('#status_report').prepend("<h4>Waiting for camera status....</h4>")
-            $.get('/phenocam?action=status', function(data)
+    //let the modal hide but dont reset it if call hasn't returned
+    $('#status-modal').on('hide.bs.modal', function()
+        {
+            if(!status_modal_call){
+                $('#status_report').html("<img src='/static/images/ajax-loader.gif'>");
+            }
+        }
+    );
+
+    //listen for page activity and get new log records
+    $( document ).on( "active.idleTimer", function(event, elem, obj, triggerevent){
+        update_logs();
+    });
+
+    //on loading get log info
+    $(function () {
+        update_logs();
+    });
+
+    // set active tab
+    $(function () {
+        $('#myTab a[href="#{{active_tab}}"]').tab('show');
+    });
+
+    // set timer to get page updates
+    var logs_refresh = setInterval(function ()
+        {
+            if(!( $.idleTimer("isIdle"))){
+                update_logs();
+            }
+        // every  60secs
+        }, 60000); 
+
+    // use this function to updates log records
+    function update_logs(){
+        $.getJSON('/phenocam/?action=logs&last='+last_log, {}, function(data)
+            {
+            //update logs here:
+            $.each(data.logs, function(key, log)
                 {
-                  $('#status_report').html(data) 
-                  status_modal_call=false 
+                    last_log = parseInt(key);
+                    content = log.datetime +"\t"+ log.level+"\t";
+                    content += log.module + "\t"+ log.msg +"\n";
+                    $("#logs").append(content);     
                 }
-            )         
-        }
-    }
-  )
-  //let the modal hide but dont reset it if call hasn't returned
-  $('#status-modal').on('hide.bs.modal', function()
-    {
-        if(!status_modal_call){
-            $('#status_report').html("<img src='/static/images/ajax-loader.gif'>")
-        }
+            );
+            $("#logs").scrollTop($("#logs")[0].scrollTopMax);  
+            }
+        );
     }
 
-  )
+
 </script>
 {% endblock %}

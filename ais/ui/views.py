@@ -60,6 +60,8 @@ class LogView(ModelView):
     can_edit = False
     can_create = False
     can_delete = False
+    column_searchable_list=('level', 'logger', 'module', 'msg')
+    column_filters = ('created', 'level','logger', 'module', 'msg')
     column_list =('created', 'level','logger', 'module', 'msg')                
         
 class PluginView(ModelView):
