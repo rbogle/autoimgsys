@@ -2,15 +2,12 @@
 
 #external deps
 from yapsy.PluginManager import PluginManagerSingleton
-from flask import Flask
-from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext import admin
-from flask.ext.admin.contrib import sqla
 from flask.ext.admin.contrib.fileadmin import FileAdmin
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # local packages
-from ais.lib.task import Task, PoweredTask
+from ais.lib.task import Task
 from ais.lib.listener import Listener
 from ais.lib.relay import Relay
 from ais.lib.sqllog import SQLAlchemyHandler
@@ -19,7 +16,7 @@ from ais.ui.models import *
 from ais.ui.views import *
 
 #standard deps
-import os, copy, logging, logging.config
+import os, logging, logging.config
 
 #logging config
 logging.config.dictConfig(config.LOGGING)
@@ -96,7 +93,8 @@ class AISApp(object):
             if not po.initalized:
                 #get initalize config and pass to
                 logger.debug("Plugin not initalized")
-                cfg = Config.query.filter_by(plugin=name, role="Initalize").first()
+                plg = Plugin.query.filter_by(name=name).first()
+                cfg = Config.query.filter_by(plugin_id=plg.id, role="Initalize").first()
                 if cfg is not None:
                     logger.debug("Config args: %s"%(cfg.args))
                     po.configure(**cfg.args)
@@ -112,11 +110,21 @@ class AISApp(object):
         for pi in pl:
             if pi.name == name:
                 pi.plugin_object.enabled = status
+                #disabling plugin so remove jobs using it
+                if not status:
+                    jobs = Job.query.all()
+                    for job in jobs:
+                        if job.action.plugin.name==name:
+                            self.unschedule_job(job)
+                            self.db.session.delete(job)       
+                self.db.session.commit()
+                
+                
     
     def sync_plugin_db(self):
         '''
             sync_plugin_db crosschecks loaded plugins with list of plugins in DB
-            and adds any missing plugins, and removes and unloaded plugins. 
+            and adds any missing plugins, and removes and unloads plugins. 
         '''
 
         for cat in self.plugin_manager.getCategories():  
@@ -194,7 +202,8 @@ class AISApp(object):
             aps jobs are not duplicated just overwritten. 
         '''
         task_name = job.action.plugin.name
-        task_args = job.action.config.args
+#        task_args = job.action.config.args
+        task_args = job.action.args
         trigger_args = job.schedule.get_args()
         
         task_obj = self.plugin_manager.getPluginByName(task_name,'Task').plugin_object
@@ -293,12 +302,7 @@ class AISApp(object):
         test_user = User(login="test", password="test")
         self.db.session.add(test_user)
         
-        cr = Config(name='Run Config', plugin='Test Task', role="Runtime", args={'arg1':"first arg", 'arg2':"second arg"})
-        ci = Config(name='Task Init', plugin='Test Task', role="Initalize", args={'arg1':"primata arg", 'arg2':"secunda arg"})
-        self.db.session.add(cr)
-        self.db.session.add(ci)
-        self.db.session.add(Action(name='Run Test',config=cr))        
-        self.db.session.add(Schedule(name='Every 2 Minutes', minute='*/2'))
+        self.db.session.add(Schedule(name='Every 10 Minutes', minute='*/10', hour='6-18'))
         self.db.session.commit()
                            
     def __init__(self, plugin_location=flask.root_path+"/plugins"):
@@ -368,7 +372,7 @@ class AISApp(object):
         
         #add Scheduling Menu
         self.ui.add_view(JobView(Job,db.session, name='Scheduled Jobs'))
-
+        self.ui.add_view(FileAdmin(config.FILESTORE, name="Data Files"))
         #Make Plugins menu
         #find plugins with views and widgets available:
         logger.debug("Setting up plugins")
@@ -406,18 +410,15 @@ class AISApp(object):
                 logger.debug("Plugin Viewable: %s" %pi.name)
                 po.category= "Plugins"
                 self.ui.add_view(po) 
-
-        
-        self.ui.add_view(FileAdmin(config.FILESTORE, name="Data Files"))
+                
         #Schedule Settings menu
-        self.ui.add_view(AuditorView(Auditor,db.session, name='Auditor List', category="Schedule Settings"))
-        self.ui.add_view(ModelView(Schedule,db.session, name = 'Schedules',category='Schedule Settings'))
-        self.ui.add_view(ActionView(Action,db.session,name='Actions', category='Schedule Settings'))   
+        self.ui.add_view(AuditorView(Auditor,db.session, name='Auditor List', category="Settings"))
+        self.ui.add_view(ModelView(Schedule,db.session, name = 'Schedules',category='Settings'))
+        self.ui.add_view(PluginView(Plugin,db.session,name='Plugins', category='Settings')) 
         #add Advanced Menu
-        self.ui.add_view(ModelView(User,db.session, name='Users', category='Advanced')) 
-        self.ui.add_view(PluginView(Plugin,db.session,name='Plugins', category='Advanced'))
-        self.ui.add_view(ConfigView(Config,db.session,name='Plugin Configs', category='Advanced'))        
-        self.ui.add_view(LogView(Log,db.session, name='Plugin Logs', category='Advanced')) 
+        self.ui.add_view(ModelView(User,db.session, name='Users', category='Admin')) 
+        self.ui.add_view(ConfigView(Config,db.session,name='Plugin Configs', category='Admin'))        
+        self.ui.add_view(LogView(Log,db.session, name='Plugin Logs', category='Admin')) 
         
 
 if __name__=='__main__':

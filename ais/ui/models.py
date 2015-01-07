@@ -1,4 +1,3 @@
-from flask.ext.sqlalchemy import SQLAlchemy
 import datetime
 from ais.ui import db
 #from sqlalchemy import Column, Integer, String, PickleType, DateTime, Boolean, ForeignKey
@@ -86,16 +85,6 @@ class Plugin(db.Model):
     def __repr__(self):
         return self.name
         
-class Action(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable = False)
-    config_id = db.Column(db.Integer, db.ForeignKey('config.id'))
-    config = db.relationship('Config')
-    plugin_id = db.Column(db.Integer, db.ForeignKey('plugin.id'))
-    plugin = db.relationship('Plugin')
-    
-    def __repr__(self):
-        return self.name
         
 class Auditor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -113,8 +102,10 @@ class Job(db.Model):
     name = db.Column(db.String(100), nullable=False, unique=True)
     schedule_id = db.Column(db.Integer, db.ForeignKey('schedule.id'))
     schedule = db.relationship("Schedule")
-    action_id = db.Column(db.Integer, db.ForeignKey('action.id'))
-    action = db.relationship("Action")
+    action_id = db.Column(db.Integer, db.ForeignKey('config.id'))
+    action = db.relationship("Config")
+#    action_id = db.Column(db.Integer, db.ForeignKey('action.id'))
+#    action = db.relationship("Action")
     enabled = db.Column(db.Boolean)
     running = db.Column(db.Boolean)
     
@@ -124,9 +115,10 @@ class Job(db.Model):
 class Config(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
+    plugin_id = db.Column(db.Integer, db.ForeignKey('plugin.id'))
+    plugin = db.relationship('Plugin')
     role = db.Column(db.Enum('Initalize', 'Runtime', name='config_roles'))
-    plugin = db.Column(db.String(100))
     args = db.Column(db.PickleType)
     
     def __repr__(self):
-        return "%s --> %s" %(self.plugin,self.name)
+        return "%s --> %s" %(self.plugin.name,self.name)

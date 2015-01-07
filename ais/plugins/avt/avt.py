@@ -47,6 +47,7 @@
 from ais.lib.task import PoweredTask
 from ais.lib.relay import Relay
 import time,cv2,traceback,datetime,os
+from collections import OrderedDict
 import numpy as np
 from pymba import *
 
@@ -100,6 +101,7 @@ class AVT(PoweredTask):
             timeout = kwargs.get("timeout", 5000)
             sequence = kwargs.get('sequence', None)
             pxfmt = kwargs.get('pixel_format', '')
+
             if pxfmt not in ('Mono8','BayerGB8'):
                 pxfmt = 'BayerGB12'
                 self._bit_depth = np.uint16
@@ -130,6 +132,50 @@ class AVT(PoweredTask):
             raise e 
         self.logger.info("AVT driver ran its task")
         self.last_run['success'] = True  
+        
+        
+    def status(self):
+        status = OrderedDict()
+        try:
+            self.start()
+            
+            status["Camera Model"] = self.getProperty("DeviceModelName")
+            status['Camera ID']=self.getProperty("DeviceID")
+            ipnum = self.getProperty("GevCurrentIPAddress")
+            o1 = int(ipnum / 16777216) % 256
+            o2 = int(ipnum / 65536) % 256
+            o3 = int(ipnum / 256) % 256
+            o4 = int(ipnum) % 256
+            status["Current IP Addr"]='%(o1)s.%(o2)s.%(o3)s.%(o4)s' % locals()
+            sh = self.getProperty("SensorHeight")
+            sw = self.getProperty("SensorWidth")
+            ih = self.getProperty("Height")
+            iw = self.getProperty("Width")
+            status["Sensor size"]= "(%s,%s)" %(sw,sh)
+            status["Image size"]= "(%s,%s)" %(iw,ih)
+            status["Exposure"]=self.getProperty("ExposureTimeAbs")
+            status["ExposureMode"]=self.getProperty("ExposureMode")
+            status["Gain"] = self.getProperty("Gain")
+            status["Payload"]=self.getProperty("PayloadSize")
+            status["AcquisitionMode"]=self.getProperty("AcquisitionMode")
+            status["TriggerSource"]=self.getProperty("TriggerSource")
+            status["TriggerMode"]=self.getProperty("TriggerMode")
+            status["Bandwidth"]=self.getProperty("StreamBytesPerSecond")
+            status["PixelFormat"]=self.getProperty("PixelFormat")
+            status["PacketSize"]=self.getProperty("GevSCPSPacketSize")         
+            
+            self.stop()
+        except Exception as e:
+            try:
+                self.stop()
+            except:
+                pass
+            self.logger.error( str(e))
+            self.logger.error( traceback.format_exc())
+            status['Error'] = "Error Encountered:" if str(e)=="" else str(e)
+            status['Traceback'] = traceback.format_exc()
+            
+        return status 
         
     def configure(self, **kwargs):
         self._powerdelay = kwargs.get('relay_delay', 30)
@@ -214,8 +260,11 @@ class AVT(PoweredTask):
     
             self.uniqueid = cam_guid
     
+            #downsize packets to be safe
+            self.setProperty("GevSCPSPacketSize", 1500)
             self.setProperty("AcquisitionMode","SingleFrame")
             self.setProperty("TriggerSource","Freerun")
+            self.setProperty("TriggerMode", "On")
     
             # TODO: FIX to get valid modes as prop and adj 
             #       img capture to approp bit depth
@@ -365,7 +414,7 @@ class AVT(PoweredTask):
         self._camera = None
         self._started = False
         self._powerdelay = kwargs.get('relay_delay', 30)
-        #self._powerctlr = self._marshal_obj('power_ctlr', **kwargs)
+        self._powerctlr = None
         self._powerport = kwargs.get('relay_port', 0)
         self._bit_depth = np.uint16
         #powcls = self._powerctlr.__class__()
@@ -437,6 +486,7 @@ class AVT(PoweredTask):
                                            shape = (f.height, f.width, 1))
             c.endCapture()
             return moreUsefulImgData
+            
         except VimbaException, ve:
             print "VimbaException %d: %s" % (ve.errorCode, e.message)
             raise(ve)
@@ -522,7 +572,7 @@ class AVT(PoweredTask):
             raise(Exception("AVT Camera is not started."))
     
 if __name__ == "__main__":
-    
+    import logging
     logging.basicConfig(level=logging.DEBUG)
     
     init_args ={
@@ -536,7 +586,6 @@ if __name__ == "__main__":
     }   
     
     run_args = {
-
         'file_prefix': 'hdr',
         'sub_dir' : "/test",
         'date_dir' : "Daily",

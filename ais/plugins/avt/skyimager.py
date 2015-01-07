@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
 
 import ais.plugins.avt.avt as avt #inhertiancew path due to Yapsy detection rules
-from ais.ui.models import Config, Plugin
+from ais.ui.models import Config, Plugin, Log
 from wtforms import Form,StringField,HiddenField,TextAreaField, BooleanField,IntegerField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from flask.ext.admin import expose
+from collections import OrderedDict
 import  ast
-
-
 
 class RunConfigListForm(Form):
     id = HiddenField()
     config = QuerySelectField("Stored Configs:", allow_blank=True, blank_text="Create New", 
-                          query_factory=lambda: Config.query.filter_by(plugin="SkyImager", role="Runtime").all()                          
+                          query_factory=lambda: Config.query.join(Plugin).filter(Plugin.name=="SkyImager").filter(Config.role=="Runtime").all()                        
                           )    
     
 class RunArgsForm(Form):
@@ -50,9 +49,10 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
     def update_init_model(self, form):
         from flask import flash
         #load init config stored
-        icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
+        plg =Plugin.query.filter_by(name = self.name).first()
+        icfg = Config.query.filter_by(plugin_id=plg.id, role="Initalize").first()
         if icfg is None:
-            icfg = Config(plugin=self.name, role="Initalize", args={}, name="SkyImager Init")
+            icfg = Config(plugin=plg, role="Initalize", args={}, name="SkyImager Init")
         #update config obj with formdata
         new_args = icfg.args.copy()
 
@@ -80,9 +80,10 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
             
     def update_init_form(self):
         #load init config stored
-        icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
+        plg =Plugin.query.filter_by(name = self.name).first()
+        icfg = Config.query.filter_by(plugin_id=plg.id, role="Initalize").first()
         if icfg is None:
-            icfg = Config(plugin=self.name, role="Initalize", args={}, name="SkyImager Init")
+            icfg = Config(plugin=plg, role="Initalize", args={}, name="SkyImager Init")
         
         form = InitArgsForm(id='init')
         
@@ -99,9 +100,10 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
         
         from flask import flash
         if form.get('name') != "":
-            icfg = Config.query.filter_by(plugin=self.name, role="Runtime", name=form.get("name")).first()
+            plg =Plugin.query.filter_by(name = self.name).first()
+            icfg = Config.query.filter_by(plugin_id=plg.id, role="Runtime", name=form.get("name")).first()
             if icfg is None:
-                icfg = Config(plugin=self.name, role="Runtime", name=form.get('name'))
+                icfg = Config(plugin=plg, role="Runtime", name=form.get('name'))
             #TODO we need to validate this as usable dict
             #update config obj with formdata
             new_args = form.get("args")
@@ -135,7 +137,7 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
     
     def do_reinit(self):
         from flask import flash, redirect
-        icfg = icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
+        icfg =Config.query.join(Plugin).filter(Plugin.name==self.name).filter(Config.role=="Initalize").first()
         if icfg is not None:
             kwargs = icfg.args.copy()
             self.configure(**kwargs)
@@ -145,9 +147,46 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
         return redirect('/skyimager')
         
     def do_status(self):
-        from flask import flash, redirect
-        flash("Status update Requested")
-        return redirect('/skyimager')   
+        from flask import Markup
+        content = Markup("<div class='panel panel-default'>")
+        info = self.status()
+        err = info.get('Error', None)  
+        if err is not None: 
+            content += Markup("<div class='panel-body'>")
+            estr = "<strong> %s </strong><br/>" %err
+            content += Markup(estr)
+            traceback = info.get("Traceback", "No Trace Available")
+            traceback = traceback.replace('\n', '<br />')
+            content += Markup(traceback)
+            content+=Markup("</div>")
+        else:
+            #build a pretty table from rgb, nir info
+            table= OrderedDict()
+            table['tableo']="<table class='table'>"
+            table['header']="<thead><tr><th>&nbsp</th><th>Camera</th></tr></thead>"
+            table['tbodyo']='<tbody>'
+
+            for k,v in info.iteritems():
+                table[k]="<tr><td>%s</td><td>%s</td></tr>" %(k,v)
+            table['tbodyc']="</tbody>"
+            table['tablec']="</table>"
+            for k,v in table.iteritems():
+                content+=Markup(v+'\n')
+            
+        content+=Markup("</div>")
+        return content 
+
+    def get_logs(self, rargs):
+        from flask import jsonify
+        last = rargs.get("last", -1)
+        logs = Log.query.filter(Log.logger==self.name, Log.id>int(last)).all()
+        #TODO:logs could be None what happens
+        if logs is not None:
+            data = OrderedDict()
+            for log in logs:
+                data[log.id]={'msg':log.msg, 'level':log.level, 
+                    'datetime':log.created, 'module':log.module}
+        return jsonify(logs=data)
 
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):
@@ -169,6 +208,8 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
                 return self.do_test()   
             if action == "status":
                 return self.do_status()
+            if action == "logs":
+                return self.get_logs(request.args)
         #check for form submit
         if h.is_form_submitted():
             form_data = request.form

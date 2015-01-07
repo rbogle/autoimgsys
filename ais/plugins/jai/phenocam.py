@@ -11,7 +11,7 @@ from collections import OrderedDict
 class RunConfigListForm(Form):
     id = HiddenField()
     config = QuerySelectField("Stored Configs:", allow_blank=True, blank_text="Create New", 
-                          query_factory=lambda: Config.query.filter_by(plugin="PhenoCam", role="Runtime").all()                          
+                          query_factory=lambda: Config.query.join(Plugin).filter(Plugin.name=="PhenoCam").filter(Config.role=="Runtime").all()                          
                           )    
     
 class RunArgsForm(Form):
@@ -52,9 +52,10 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
     def update_init_model(self, form):
         from flask import flash
         #load init config stored
-        icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
+        icfg = Config.query.join(Plugin).filter(Plugin.name==self.name).filter(Config.role=="Initalize").first()
         if icfg is None:
-            icfg = Config(plugin=self.name, role="Initalize", args={}, name="PhenoCam Init")
+            plg = Plugin.query.filter_by(name=self.name).first()
+            icfg = Config(plugin=plg, role="Initalize", args={}, name="PhenoCam Init")
         #update config obj with formdata
         new_args = icfg.args.copy()
         new_args['sensors']=(
@@ -85,9 +86,11 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
 
     def update_init_form(self):
         #load init config stored
-        icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
+        
+        icfg = Config.query.join(Plugin).filter(Plugin.name==self.name).filter(Config.role=="Initalize").first()
         if icfg is None:
-            icfg = Config(plugin=self.name, role="Initalize", args={}, name="PhenoCam Init")
+            plg = Plugin.query.filter_by(name=self.name).first()
+            icfg = Config(plugin=plg, role="Initalize", args={}, name="PhenoCam Init")
 #        form  = InitArgsForm(id="init")
         sensors={}
         sl = icfg.args.get("sensors", None)
@@ -110,9 +113,10 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         
         from flask import flash
         if form.get('name') != "":
-            icfg = Config.query.filter_by(plugin=self.name, role="Runtime", name=form.get("name")).first()
+            plg =Plugin.query.filter_by(name = self.name).first()
+            icfg = Config.query.filter_by(plugin_id=plg.id, role="Runtime", name=form.get("name")).first()
             if icfg is None:
-                icfg = Config(plugin=self.name, role="Runtime", name=form.get('name'))
+                icfg = Config(plugin_id=plg.id, role="Runtime", name=form.get('name'))
             #TODO we need to validate this as usable dict
             #update config obj with formdata
             new_args = form.get("args")
@@ -146,7 +150,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
     
     def do_reinit(self):
         from flask import flash, redirect
-        icfg = Config.query.filter_by(plugin=self.name, role="Initalize").first()
+        icfg = Config.query.join(Plugin).filter(Plugin.name==self.name).filter(Config.role=="Initalize").first()
         if icfg is not None:
             kwargs = icfg.args.copy()
             self.configure(**kwargs)

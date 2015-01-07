@@ -1,9 +1,8 @@
 from flask.ext.admin.contrib.sqla import ModelView
 from flask.ext.admin.base import *
-from flask.ext.admin.form import rules
 from flask import Markup,redirect,flash,jsonify
-from wtforms.fields import  TextAreaField, SelectField, SelectMultipleField
-import xml.etree.ElementTree as ET
+from wtforms.fields import  TextAreaField, SelectMultipleField
+
 
 from ais.ui import flask,db
 from ais.ui.models import *
@@ -41,9 +40,9 @@ class DashboardView(AdminIndexView):
     def index(self,action=None):
         now = datetime.datetime.now().strftime("%a, %b %d. %Y %H:%M")        
         if action=='resume':
-            rtn = flask.aisapp.resume()
+            flask.aisapp.resume()
         elif action=='pause':
-            rtn = flask.aisapp.pause()
+            flask.aisapp.pause()
         elif action=='time':
             return jsonify(time=now)
         elif action=='widgets':
@@ -69,15 +68,10 @@ class PluginView(ModelView):
         PluginView for Plugins allows Advanced user to disable enable plugins
         Disabled plugins will not be shown to Actions nor utilized in the dashboard
     '''
-   # can_edit = False
+
     can_create = False
     can_delete = False
     column_list =('name', 'category', 'class_name', 'enabled')
-#    form_widget_args={
-#        'name':{'disabled':True},
-#        'category':{'disabled':True} ,
-#        'class_name':{'disabled':True} ,
-#    }
     
     def update_model(self, form, plugin):
         logger.debug("PluginView on_model_change called")
@@ -180,6 +174,12 @@ class JobView(ModelView):
     form_create_rules = ('name', 'schedule', 'action', 'enabled')
     form_edit_rules = ('name', 'schedule', 'action', 'enabled')
 
+    form_args = dict (
+       action = dict( #filter down select list to just Task plugins
+           query_factory= lambda: db.session.query(Config).filter_by(role="Runtime"),
+           allow_blank = False
+       ) 
+    )
     
     def update_model(self, form, model):
         logger.debug("ScheduleView on_model_change called")
@@ -206,26 +206,6 @@ class JobView(ModelView):
             flask.aisapp.schedule_jobs_from_db()
             return True
         return False
-    
-class ActionView(ModelView):
-
-    '''
-        ActionView is used for Action model, 
-        We  filter plugins in select form to only those listed as tasks
-    '''
-    column_list = ('name', 'plugin', 'config')
-    form_create_rules = ('name', 'plugin', 'config')
-    form_edit_rules = ('name', 'plugin', 'config')
-    
-    form_args = dict (
-       plugin = dict( #filter down select list to just Task plugins
-           query_factory= lambda: db.session.query(Plugin).filter_by(category="Task", enabled=True),
-           allow_blank = False
-       ),
-       config = dict(
-           query_factory= lambda: db.session.query(Config).filter_by(role="Runtime")
-       )
-   )        
     
    
 class ConfigView(ModelView):
@@ -255,6 +235,12 @@ class ConfigView(ModelView):
         'args': TextAreaField("Config")
     }
      
+    form_args = dict (
+       plugin = dict( #filter down select list to just Task plugins
+           query_factory= lambda: db.session.query(Plugin).filter_by(category="Task", enabled=True),
+           allow_blank = False
+       ) 
+    )
 #    form_args = dict (
 #       plugin = dict( #filter down select list to just Task plugins
 #           choices= lambda: flask.aisapp.get_active_task_names()

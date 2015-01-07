@@ -1,5 +1,6 @@
+<p>Status:</p>
 {% if data.last_run['success']%}
     Last Run @ {{data.last_run['time']}}
 {% else %}
-    Run Error: {{data.last_run['error_msg']}}
+    {{data.last_run['error_msg']}}
 {% endif%}
