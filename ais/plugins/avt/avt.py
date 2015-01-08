@@ -96,7 +96,7 @@ class AVT(PoweredTask):
             nest = kwargs.get("date_dir_nested", False)
             subdir = kwargs.get("sub_dir", None)
             filename = self._gen_filename(kwargs.get('file_prefix', "jai"), 
-                                 datepattern,  subdir=subdir, split = split, nest = nest)
+                                 datepattern, subdir=subdir, split = split, nest = nest)
             imgtype = kwargs.get("image_type", 'tif')
             timeout = kwargs.get("timeout", 5000)
             sequence = kwargs.get('sequence', None)
@@ -109,7 +109,7 @@ class AVT(PoweredTask):
                 self._bit_depth = np.uint8             
             self.setProperty("PixelFormat", pxfmt)
             #do we have a sequence to take or one-shot
-            self.last_run['time'] = datetime.datetime.now().strftime(datepattern)
+            self.last_run['time'] = datetime.datetime.now().strftime( "%Y-%m-%dT%H%M%S")
             if sequence is not None:
                 if isinstance(sequence,list):
                     for i,shot in enumerate(sequence):
@@ -514,7 +514,7 @@ class AVT(PoweredTask):
             imgpath = self.filestore
         #tack on subdir to imgpath if requested    
         if subdir is not None:
-            imgpath+=subdir
+            imgpath+="/"+subdir
         #try to make imagepath    
         if not os.path.isdir(imgpath):    
             try:
@@ -528,6 +528,9 @@ class AVT(PoweredTask):
         #make datepattern for file name if asked for
         if dtpattern is not None:
             dt = now.strftime(dtpattern)
+        else:
+            dt=""
+            delim=""
         #we return the path and name prefix with dt stamp
         #save_image adds sensor and sequence number and suffix.
         return imgpath+"/"+prefix+delim+dt

@@ -2,7 +2,7 @@
 
 import ais.plugins.avt.avt as avt #inhertiancew path due to Yapsy detection rules
 from ais.ui.models import Config, Plugin, Log
-from wtforms import Form,StringField,HiddenField,TextAreaField, BooleanField,IntegerField
+from wtforms import Form,StringField,HiddenField,TextAreaField, BooleanField,IntegerField,validators
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from flask.ext.admin import expose
 from collections import OrderedDict
@@ -12,8 +12,7 @@ class RunConfigListForm(Form):
     id = HiddenField()
     config = QuerySelectField("Stored Configs:", allow_blank=True, blank_text="Create New", 
                           query_factory=lambda: Config.query.join(Plugin).filter(Plugin.name=="SkyImager").filter(Config.role=="Runtime").all()                        
-                          )    
-    
+                          )        
 class RunArgsForm(Form):
     id = HiddenField()
     name = StringField("Config Name")
@@ -25,6 +24,11 @@ class InitArgsForm(Form):
     relay_name = QuerySelectField("Relay Plugin", query_factory= lambda: Plugin.query.filter_by(category='Relay').all())
     relay_port = IntegerField("Relay Port")
     relay_delay = IntegerField("Seconds to Delay")
+    
+class TestParamsForm(Form):
+    id = HiddenField()
+    exposure = IntegerField("Exposure 21-153000000 uS", default=15000, validators=[validators.NumberRange(min=21, max=153000000)])
+    gain = IntegerField("Gain 0-26db", default=0, validators=[validators.NumberRange(min=0, max=26)])    
     
 class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
     
@@ -45,6 +49,7 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
         self.last_run={}
         self.last_run['success'] = False
         self.last_run['error_msg'] = "No runs attempted"
+        
 
     def update_init_model(self, form):
         from flask import flash
@@ -130,10 +135,27 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
         else:
             return RunArgsForm(id="run")        
             
-    def do_test(self):
-        from flask import flash, redirect
-        flash("Test Requested")
-        return redirect('/skyimager')
+    def do_test(self, form=None):
+        from flask import Markup
+        if form is None:
+            form = TestParamsForm(id='test')
+            content = Markup("<img src='/static/images/ajax-loader.gif'/>")
+        else: 
+            form = TestParamsForm(form)
+            if form.validate():
+                kwargs = {'sub_dir':'test', 'date_dir': None, 'date_pattern': None}
+                kwargs['file_prefix']="SkyImager_Test"
+                kwargs['image_type'] = 'jpg'
+                kwargs['pixel_format']='BayerGB8'
+                kwargs['exposure_time'] = form.exposure.data
+                kwargs['gain']= form.gain.data
+                try:
+                    self.run(**kwargs)
+                    content = Markup("<img src='/fileadmin/b/SkyImager/test/SkyImager_Test.jpg'/>")
+                except:
+                    content = Markup("Error")
+                
+        return self.render(self.path+"/test.html", test_form = form, img = content, return_url = "/skyimager")
     
     def do_reinit(self):
         from flask import flash, redirect
@@ -210,6 +232,7 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
                 return self.do_status()
             if action == "logs":
                 return self.get_logs(request.args)
+                
         #check for form submit
         if h.is_form_submitted():
             form_data = request.form
@@ -225,6 +248,9 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
                     run_cfg=None
                 else:
                     run_cfg = int(form_data.get('config'))
+            elif form_type == 'test':
+                return self.do_test(request.form)                
+                
         #load init form           
         init_form = self.update_init_form()                
         

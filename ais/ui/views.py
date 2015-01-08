@@ -241,8 +241,3 @@ class ConfigView(ModelView):
            allow_blank = False
        ) 
     )
-#    form_args = dict (
-#       plugin = dict( #filter down select list to just Task plugins
-#           choices= lambda: flask.aisapp.get_active_task_names()
-#       )
-#   )

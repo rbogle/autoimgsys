@@ -2,7 +2,7 @@ from yapsy.IPlugin import IPlugin
 from yapsy.PluginManager import PluginManagerSingleton
 from flask.ext.admin import BaseView, expose
 from flask import render_template
-import logging, inspect, os.path
+import logging, inspect
 
 class PluginObj(IPlugin, BaseView):
     
@@ -30,7 +30,7 @@ class PluginObj(IPlugin, BaseView):
         
         try: 
             getattr(self.manager, 'app')
-        except Exception,e:
+        except Exception:
             pass
         else:
             self.app = self.manager.app
@@ -43,12 +43,12 @@ class PluginObj(IPlugin, BaseView):
         return self.enabled
         
     def activate(self):
-        super(Plugin, self).activate()
-        self.logger.info("Plugin: %s activated" % self.__class__.__name__)
+        super(PluginObj, self).activate()
+        self.logger.debug("Plugin: %s activated" % self.__class__.__name__)
         
     def deactivate(self):
-        super(Plugin, self).deactivate()
-        self.logger.info("Plugin: %s deactivated" % self.__class__.__name__)
+        super(PluginObj, self).deactivate()
+        self.logger.debug("Plugin: %s deactivated" % self.__class__.__name__)
         
     def widget_view(self):
         template = self.widget_template

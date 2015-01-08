@@ -112,14 +112,15 @@ class AISApp(object):
                 pi.plugin_object.enabled = status
                 #disabling plugin so remove jobs using it
                 if not status:
-                    jobs = Job.query.all()
-                    for job in jobs:
-                        if job.action.plugin.name==name:
-                            self.unschedule_job(job)
-                            self.db.session.delete(job)       
-                self.db.session.commit()
+                    pdb = Plugin.query.filter_by(name=pi.name).first()
+                    self.remove_plugin_jobs(pdb.id)
                 
-                
+    def remove_plugin_jobs(self, id):
+        jobs = Job.query.join(Config).filter(Config.plugin_id==id)
+        for job in jobs:
+            self.unschedule_job(job)
+            self.db.session.delete(job)
+        self.db.session.commit()
     
     def sync_plugin_db(self):
         '''
@@ -133,16 +134,25 @@ class AISApp(object):
             pinames = {pi.name:pi.plugin_object for pi in pilist}
             pdblist = Plugin.query.filter_by(category=cat).all() 
             pdbnames = [p.name for p in pdblist]
+            pdbids = [p.id for p in pdblist]
             
-            for pdb in pdblist: #walk the db 
+            #walk the jobs and remove any orphans
+            jobs = Job.query.join(Config).filter(Config.plugin_id not in pdbids).all()
+            for job in jobs:
+                self.unschedule_job(job)
+                self.db.session.delete(job)                
+            self.db.session.commit()    
+            #walk the db remove ones not loaded by pm
+            for pdb in pdblist: 
                 if pdb.name not in pinames.keys(): #plugin no longer loaded
-                    logger.debug("Removing plugin %s from db" %pdb.name)
+                    logger.debug("Removing plugin %s from db" %pdb.name) 
+                    self.remove_plugin_jobs(pdb.id)
                     db.session.delete(pdb)
                 else:
                     pinames[pdb.name].enabled = pdb.enabled                    
-                self.db.session.commit()   
-                
-            for pi in pilist: #walk the plugins
+            self.db.session.commit()
+            #walk the plugins and insert into db new plugins    
+            for pi in pilist: 
                 logger.debug("Checking plugin %s is in db"%pi.name)
                 if pi.name not in pdbnames: #not in db create and add
                     po = pi.plugin_object
@@ -154,7 +164,7 @@ class AISApp(object):
                             enabled = False
                             )
                     self.db.session.add(pdb)
-                self.db.session.commit()
+            self.db.session.commit()
         
     def schedule_jobs_from_db(self):
         '''
@@ -281,13 +291,6 @@ class AISApp(object):
             logger.error("Auditor %s could not be unregistered" %auditor.name)
         else:
             logger.info("Auditor %s is unregistered" %auditor.name)
-
-    def get_active_task_names():
-        choices = list()
-        pdbs = db.session.query(Plugin).filter_by(category="Task", enabled=True).all()
-        for p in pdbs:
-            choices.append((p.name, p.name))
-        return choices
                 
     def initalize_db(self):
         """
@@ -353,7 +356,7 @@ class AISApp(object):
         #cross check with DB to see if plugins are avail in ui
         self.sync_plugin_db()
         self.initalize_plugins()
-        
+
         #examine db for jobs configured and enabled and load them into APS
         self.schedule_jobs_from_db()
         self.register_listeners_from_db()

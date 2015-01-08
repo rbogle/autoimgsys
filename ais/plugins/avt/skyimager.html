@@ -25,7 +25,21 @@
         <h4 class="modal-title" id="myModalLabel">Status Results</h4>
       </div>
       <div class="modal-body text-center" id="status_report">
-        <img src="/static/images/ajax-loader.gif">
+        <img src="/static/images/ajax-loader.gif"/>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Test Modal -->
+<div class="modal fade" id="test-modal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" style="width=90%">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+        <h4 class="modal-title" id="myModalLabel">SkyImager Test</h4>
+      </div>
+      <div class="modal-body text-center" id="test-modal-body">
       </div>
     </div>
   </div>
@@ -49,8 +63,8 @@
         		</div>
         		<div id='server_ctl_btns'  class='pull-right'>
         				<a class="btn btn-primary" href="/skyimager/?action=reinit"><span class="glyphicon glyphicon-wrench"></span> Initalize</a>
-                              <a  class="btn btn-primary" data-toggle="modal" data-target="#status-modal"><span class="glyphicon glyphicon-tasks"></span> Status</a>
-        				<a class="btn btn-primary" href="/skyimager/?action=test"><span class="glyphicon glyphicon-picture"></span> Test</a>
+                              <a class="btn btn-primary" data-toggle="modal" data-target="#status-modal"><span class="glyphicon glyphicon-tasks"></span> Status</a>
+        				<a class="btn btn-primary" data-toggle="modal" data-target="#test-modal" data-backdrop="static"><span class="glyphicon glyphicon-picture"></span>Test</a>
         		</div>
         	</div>
         </div>
@@ -95,6 +109,18 @@
     var status_modal_call = false;
     // keep track of log records loaded so far  
     var last_log=0;
+
+    // send call to show test window
+    $('#test-modal').on('show.bs.modal', function()
+        {
+            $('#test-modal-body').load('/skyimager?action=test');
+                //$.get('/skyimager?action=test', function(data)
+                //    {
+                //      $('#test-modal-body').html(data);
+                //    }
+               // );         
+        }
+    );
 
     // send call to run status, dont re-call if still waiting on previous
     $('#status-modal').on('show.bs.modal', function()
