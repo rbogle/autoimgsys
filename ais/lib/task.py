@@ -61,7 +61,7 @@ class PoweredTask(Task):
     
     def set_relay_plugin(self, relay):
         if isinstance(relay, Relay):
-            self._powerctrlr = relay
+            self._powerctlr = relay
             
     def set_relay_delay(self, delay_secs):
             self._powerdelay = delay_secs    

@@ -1,9 +1,9 @@
 import ais.plugins.jai.jai as jai #inhertiance path due to Yapsy detection rules
 from ais.ui.models import Config, Plugin, Log
-from wtforms import Form,StringField,HiddenField,TextAreaField, BooleanField,IntegerField
+from wtforms import Form,StringField,HiddenField,TextAreaField, BooleanField,IntegerField,validators
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from flask.ext.admin import expose
-import ast
+import ast,time
 from collections import OrderedDict
 
 #logger = logging.getlogger("PhenoCam")
@@ -13,7 +13,7 @@ class RunConfigListForm(Form):
     config = QuerySelectField("Stored Configs:", allow_blank=True, blank_text="Create New", 
                           query_factory=lambda: Config.query.join(Plugin).filter(Plugin.name=="PhenoCam").filter(Config.role=="Runtime").all()                          
                           )    
-    
+                          
 class RunArgsForm(Form):
     id = HiddenField()
     name = StringField("Config Name")
@@ -27,7 +27,13 @@ class InitArgsForm(Form):
     relay_name = QuerySelectField("Relay Plugin", query_factory= lambda: Plugin.query.filter_by(category='Relay').all())
     relay_port = IntegerField("Relay Port")
     relay_delay = IntegerField("Seconds to Delay")
-    
+ 
+class TestParamsForm(Form):
+    id = HiddenField()
+    exposure = IntegerField("Exposure 20-33333 uS", default=15000, validators=[validators.NumberRange(min=20, max=33333)])
+    gain = IntegerField("Gain -3 to 21db", default=0, validators=[validators.NumberRange(min=-3, max=21)])    
+
+
 class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection rules
     
     def __init__(self,**kwargs):
@@ -143,10 +149,52 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         else:
             return RunArgsForm(id="run")
 
-    def do_test(self):
-        from flask import flash, redirect
-        flash("Test Requested")
-        return redirect('/phenocam')
+    def do_test(self, form=None, mode=None):
+        from flask import Markup
+        if mode=="stop": #we closed test dialog so power down.
+            try:
+                self.stop()
+            except:
+                pass
+            return ""
+        if form is None:
+            form = TestParamsForm(id='test')
+        else: 
+            form = TestParamsForm(form)
+            if form.validate():
+                kwargs = {'sub_dir':'test', 'date_dir': None, 'date_pattern': None}
+                kwargs['file_prefix']="PhenoCam_Test"
+                kwargs['image_type'] = 'jpg'
+                kwargs['pixel_formats']=(
+                    {'pixel_format': 'BayerRG8', 'sensor': 'rgb'}, 
+                    {'pixel_format': 'Mono8', 'sensor': 'nir'}
+                )
+                kwargs['exposure_time'] = form.exposure.data
+                kwargs['gain']= form.gain.data
+                kwargs['persist']=True
+                try:
+                    self.run(**kwargs)
+                    ts = int(time.time())
+                    content = Markup("<img id='rgb' src='/fileadmin/download/PhenoCam/test/PhenoCam_Test_rgb.jpg?")
+                    content += Markup(str(ts))
+                    content += Markup("' /><br/>")
+                    content += Markup("<img id='nir' src='/fileadmin/download/PhenoCam/test/PhenoCam_Test_nir.jpg?")
+                    content += Markup(str(ts))
+                    content += Markup("' />")
+                except:
+                    content = Markup("Error")
+                return content
+            else:
+                content=Markup("<ul class=errors>")
+                for name,msgs in form.errors.iteritems():
+                    for msg in msgs:
+                        content+=Markup("<li>"+name+": ")
+                        content+=Markup(msg)
+                        content+=Markup("</li>")
+                content+= Markup("</ul>")
+                return content
+        d=self._powerdelay
+        return self.render(self.path+"/test.html", test_form = form, delay=d)
     
     def do_reinit(self):
         from flask import flash, redirect
@@ -197,11 +245,12 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
     def get_logs(self, rargs):
         from flask import jsonify
         last = rargs.get("last", -1)
-        logs = Log.query.filter(Log.logger==self.name, Log.id>int(last)).all()
+        logs = Log.query.filter(Log.logger==self.name, Log.id>int(last)) \
+            .order_by(Log.created.desc()).limit(200).all()
         #TODO:logs could be None what happens
         if logs is not None:
             data = OrderedDict()
-            for log in logs:
+            for log in reversed(logs):
                 data[log.id]={'msg':log.msg, 'level':log.level, 
                     'datetime':log.created, 'module':log.module}
         return jsonify(logs=data)
@@ -215,7 +264,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         
         if not self.initalized:
             flash("PhenoCam has not been properly initalized! See Settings Tab", 'error' )
-            
+        d = self._powerdelay   
         active_tab = 'main'
         #check for button actions on main
         run_cfg = None
@@ -224,7 +273,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             if action == "reinit":
                 return self.do_reinit()
             if action == "test":
-                return self.do_test()   
+                return self.do_test(mode=request.args.get('mode')) 
             if action == "status":
                 return self.do_status()
             if action == "logs":
@@ -244,6 +293,9 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                     run_cfg=None
                 else:
                     run_cfg = int(form_data.get('config'))
+            elif form_type == 'test':
+                return self.do_test(form=request.form)           
+                    
         #load init form           
         init_form = self.update_init_form()                
         
@@ -280,5 +332,6 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             return_url = "/phenocam/",
             run_list=run_list,
             list_opts = list_opts,
-            run_form=run_form
+            run_form=run_form,
+            delay=d
             )

@@ -57,11 +57,11 @@ class JAI_AD80GE(PoweredTask):
         """
 
         try: # we dont want to crash the ais_service so just log errors
-       
+        
            #we need to start camerasys as this is task callback
             if not self._started:   
                 self.start()
-            
+            persist = kwargs.get("persist", False)
             datepattern = kwargs.get("date_pattern", "%Y-%m-%dT%H%M%S" ) 
             split = kwargs.get("date_dir",'Daily')
             nest = kwargs.get("date_dir_nested", False)
@@ -75,7 +75,7 @@ class JAI_AD80GE(PoweredTask):
                 sname = pf.get("sensor", None)                
                 self._sensors[sname].cam.set_pixel_format_as_string(pf.get("pixel_format", None))
             #do we have a sequence to take or one-shot
-            self.last_run['time'] = datetime.datetime.now().strftime(datepattern)
+            self.last_run['time'] = datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S")
             if sequence is not None:
                 if isinstance(sequence,list):
                     for i,shot in enumerate(sequence):
@@ -86,7 +86,8 @@ class JAI_AD80GE(PoweredTask):
                 #looking for settings for one-shot
                 self.configure_shot(**kwargs)
                 self.save_image(filename,imgtype)
-            self.stop()        
+            if not persist:
+                self.stop()        
         except Exception as e:
             self.stop()
             self.logger.error( str(e))
@@ -366,7 +367,7 @@ class JAI_AD80GE(PoweredTask):
             imgpath = self.filestore
         #tack on subdir to imgpath if requested    
         if subdir is not None:
-            imgpath+=subdir
+            imgpath+="/"+subdir
         #try to make imagepath    
         if not os.path.isdir(imgpath):    
             try:
@@ -380,6 +381,9 @@ class JAI_AD80GE(PoweredTask):
         #make datepattern for file name if asked for
         if dtpattern is not None:
             dt = now.strftime(dtpattern)
+        else:
+            dt=""
+            delim=""
         #we return the path and name prefix with dt stamp
         #save_image adds sensor and sequence number and suffix.
         return imgpath+"/"+prefix+delim+dt

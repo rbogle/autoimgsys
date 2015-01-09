@@ -24,8 +24,14 @@
         <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
         <h4 class="modal-title" id="myModalLabel">Status Results</h4>
       </div>
-      <div class="modal-body text-center" id="status_report">
-        <img src="/static/images/ajax-loader.gif"/>
+      <div class="modal-body text-center">
+        <div id="cam-status" style="display: none;">
+            <h4>Waiting for Camera Startup -- aprox. {{delay}} seconds</h4>
+            <div class="progress progress-striped active">
+                <div id="pgbar" class="progress-bar" role="progressbar"  aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+        <div id="status_report"></div>
       </div>
     </div>
   </div>
@@ -33,7 +39,7 @@
 
 <!-- Test Modal -->
 <div class="modal fade" id="test-modal" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog" style="width=90%">
+  <div class="modal-dialog" style="width: 75%">
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
@@ -110,15 +116,21 @@
     // keep track of log records loaded so far  
     var last_log=0;
 
-    // send call to show test window
+    var pow_delay = {{delay}}+10;
+    var pgbar_timer = 0;
+
+
+    // on call to show test window load form and powerup camera
     $('#test-modal').on('show.bs.modal', function()
         {
             $('#test-modal-body').load('/skyimager?action=test');
-                //$.get('/skyimager?action=test', function(data)
-                //    {
-                //      $('#test-modal-body').html(data);
-                //    }
-               // );         
+        }
+    );
+
+    // on call to close test window request testmode poweroff
+    $('#test-modal').on('hide.bs.modal', function()
+        {
+            $.get('/skyimager?action=test&mode=stop');
         }
     );
 
@@ -127,10 +139,11 @@
         {
             if (!status_modal_call){
                 status_modal_call = true;
-                $('#status_report').prepend("<h4>Waiting for camera status....</h4>");
+                start_prog_bar();
                 $.get('/skyimager?action=status', function(data)
                     {
                       $('#status_report').html(data) ;
+                      stop_prog_bar();
                       status_modal_call=false ;
                     }
                 );         
@@ -142,7 +155,8 @@
     $('#status-modal').on('hide.bs.modal', function()
         {
             if(!status_modal_call){
-                $('#status_report').html("<img src='/static/images/ajax-loader.gif'>");
+                stop_prog_bar();
+                $('#status_report').html("");
             }
         }
     );
@@ -189,6 +203,21 @@
         );
     }
 
+    function start_prog_bar(){
+        $("#cam-status").show();
+        width = 0;
+        $("#pgbar").css("width", width+"%");
+        pgbar_timer = setInterval( function() {
+            width++;
+            if(width>=100) width=0;
+            $("#pgbar").css("width", width+"%");
+        }, pow_delay*10);
+    }
+
+    function stop_prog_bar(){
+         $("#cam-status").hide();
+         clearInterval(pgbar_timer);
+    }
 
 </script>
 {% endblock %}

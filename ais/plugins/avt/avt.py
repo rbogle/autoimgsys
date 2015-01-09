@@ -88,9 +88,9 @@ class AVT(PoweredTask):
         """
         try: 
             self.last_run = kwargs
+            persist = kwargs.get("persist", False) #specify to keep powered on
             if not self._started:   
-                self.start()
-                
+                self.start()     
             datepattern = kwargs.get("date_pattern", "%Y-%m-%dT%H%M%S" ) 
             split = kwargs.get("date_dir",'Daily')
             nest = kwargs.get("date_dir_nested", False)
@@ -120,8 +120,8 @@ class AVT(PoweredTask):
                 #looking for settings for one-shot
                 self._configShot(**kwargs)
                 self.saveImage(filename,imgtype,timeout)
-                
-            self.stop()
+            if not persist:    
+                self.stop()
             
         except Exception as e:
             self.stop()

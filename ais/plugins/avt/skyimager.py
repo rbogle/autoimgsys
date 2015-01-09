@@ -6,7 +6,7 @@ from wtforms import Form,StringField,HiddenField,TextAreaField, BooleanField,Int
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from flask.ext.admin import expose
 from collections import OrderedDict
-import  ast
+import time,ast
 
 class RunConfigListForm(Form):
     id = HiddenField()
@@ -135,11 +135,16 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
         else:
             return RunArgsForm(id="run")        
             
-    def do_test(self, form=None):
+    def do_test(self, form=None, mode=None):
         from flask import Markup
+        if mode=="stop": #we closed test dialog so power down.
+            try:
+                self.stop()
+            except:
+                pass
+            return ""
         if form is None:
             form = TestParamsForm(id='test')
-            content = Markup("<img src='/static/images/ajax-loader.gif'/>")
         else: 
             form = TestParamsForm(form)
             if form.validate():
@@ -149,13 +154,27 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
                 kwargs['pixel_format']='BayerGB8'
                 kwargs['exposure_time'] = form.exposure.data
                 kwargs['gain']= form.gain.data
+                kwargs['persist']=True
                 try:
                     self.run(**kwargs)
-                    content = Markup("<img src='/fileadmin/b/SkyImager/test/SkyImager_Test.jpg'/>")
+                    ts = int(time.time())
+                    content = Markup("<img src='/fileadmin/download/SkyImager/test/SkyImager_Test.jpg?")
+                    content += Markup(str(ts))
+                    content += Markup("' />")
                 except:
                     content = Markup("Error")
-                
-        return self.render(self.path+"/test.html", test_form = form, img = content, return_url = "/skyimager")
+                return content
+            else:
+                content=Markup("<ul class=errors>")
+                for name,msgs in form.errors.iteritems():
+                    for msg in msgs:
+                        content+=Markup("<li>"+name+": ")
+                        content+=Markup(msg)
+                        content+=Markup("</li>")
+                content+= Markup("</ul>")
+                return content
+        d=self._powerdelay
+        return self.render(self.path+"/test.html", test_form = form, delay=d)
     
     def do_reinit(self):
         from flask import flash, redirect
@@ -201,11 +220,12 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
     def get_logs(self, rargs):
         from flask import jsonify
         last = rargs.get("last", -1)
-        logs = Log.query.filter(Log.logger==self.name, Log.id>int(last)).all()
-        #TODO:logs could be None what happens
+        #TODO: should we limit # of returns
+        logs = Log.query.filter(Log.logger==self.name, Log.id>int(last)).order_by(Log.created.desc()).limit(200).all()
+
         if logs is not None:
             data = OrderedDict()
-            for log in logs:
+            for log in reversed(logs):
                 data[log.id]={'msg':log.msg, 'level':log.level, 
                     'datetime':log.created, 'module':log.module}
         return jsonify(logs=data)
@@ -218,7 +238,7 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
         
         if not self.initalized:
             flash("SkyImager has not been properly initalized! See Settings Tab", 'error' )
-            
+        d=self._powerdelay    
         active_tab = 'main'
         #check for button actions on main
         run_cfg = None
@@ -227,7 +247,7 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
             if action == "reinit":
                 return self.do_reinit()
             if action == "test":
-                return self.do_test()   
+                return self.do_test(mode=request.args.get('mode'))   
             if action == "status":
                 return self.do_status()
             if action == "logs":
@@ -249,7 +269,7 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
                 else:
                     run_cfg = int(form_data.get('config'))
             elif form_type == 'test':
-                return self.do_test(request.form)                
+                return self.do_test(form=request.form)                
                 
         #load init form           
         init_form = self.update_init_form()                
@@ -287,6 +307,7 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
             return_url = "/skyimager/",
             run_list=run_list,
             list_opts = list_opts,
-            run_form=run_form
+            run_form=run_form,
+            delay=d
             )
         
