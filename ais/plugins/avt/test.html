@@ -1,0 +1,67 @@
+{% import 'admin/lib.html' as lib with context %}
+ <div>
+       <form id="test-form" action="/skyimager/" method="POST" role="form" class="admin-form form-horizontal" enctype="multipart/form-data">
+            {{ lib.render_form_fields(test_form, form_opts=form_opts) }}
+            <hr>
+            <div class="form-group">
+              <div class="col-md-offset-2 col-md-10 submit-row text-right">
+            	  <input type="submit" class="btn btn-primary" value="Capture Image" />
+        	        <a class="btn btn-danger" role="button" data-dismiss="modal" data-target="#test-modal">Close</a>
+              </div>
+            </div>
+       </form>
+</div>
+<div id="cam-test-status" style="display: none;">
+    <h4>Waiting for Camera Startup -- aprox. {{delay}} seconds</h4>
+    <div class="progress progress-striped active">
+        <div id="test-pgbar" class="progress-bar" role="progressbar"  aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
+</div>
+<div id="test-img" style="margin: auto">
+</div>
+
+<script>
+    //captures sumbit event and handles submission and response
+    var pow_delay = {{delay}}+10;
+    var cam_test_started = false;
+    var test_pgbar_timer = 0;
+
+    function start_test_prog_bar(){
+        if(!cam_test_started){
+            cam_test_started=true;
+            $("#cam-test-status").show();
+            width = 0;
+            $("#test-pgbar").css("width", width+"%");
+            test_pgbar_timer = setInterval( function() {
+                width++;
+                if(width>=100) width=0;
+                $("#test-pgbar").css("width", width+"%");
+            }, pow_delay*10);
+        }
+    }
+
+    function stop_test_prog_bar(){
+         $("#cam-test-status").hide();
+         clearInterval(test_pgbar_timer);
+    }
+
+    $("#test-form").submit(function(event){
+
+        event.preventDefault();
+        var $this = $(this);
+        var url = $this.attr("action");
+        var data = $this.serialize();
+        var callback = function(datarecv){
+            stop_test_prog_bar();
+            w = $this.width();
+            $("#test-img").html(datarecv);
+            $("#test-img img").width(w-20);
+            $("#test-img img").height((w-20)*.5);
+        }
+        start_test_prog_bar();
+        $("#test-img").css("padding", "10px")
+        $.post(url, data, callback);
+
+    });
+
+</script>
