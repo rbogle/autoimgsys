@@ -102,10 +102,8 @@ class Job(db.Model):
     name = db.Column(db.String(100), nullable=False, unique=True)
     schedule_id = db.Column(db.Integer, db.ForeignKey('schedule.id'))
     schedule = db.relationship("Schedule")
-    action_id = db.Column(db.Integer, db.ForeignKey('config.id'))
-    action = db.relationship("Config")
-#    action_id = db.Column(db.Integer, db.ForeignKey('action.id'))
-#    action = db.relationship("Action")
+    config_id = db.Column(db.Integer, db.ForeignKey('config.id'))
+    config = db.relationship("Config")
     enabled = db.Column(db.Boolean)
     running = db.Column(db.Boolean)
     

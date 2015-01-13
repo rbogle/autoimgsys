@@ -137,11 +137,14 @@ class AISApp(object):
             pdbids = [p.id for p in pdblist]
             
             #walk the jobs and remove any orphans
-            jobs = Job.query.join(Config).filter(Config.plugin_id not in pdbids).all()
-            for job in jobs:
-                self.unschedule_job(job)
-                self.db.session.delete(job)                
-            self.db.session.commit()    
+            if cat=="Task":
+                jobs = Job.query.all()
+                for job in jobs:
+                    if job.config.plugin_id not in pdbids:
+                        self.unschedule_job(job)
+                        self.db.session.delete(job)                
+                self.db.session.commit()    
+            
             #walk the db remove ones not loaded by pm
             for pdb in pdblist: 
                 if pdb.name not in pinames.keys(): #plugin no longer loaded
@@ -211,9 +214,8 @@ class AISApp(object):
             using Schedule, Job and Plugin info to configure plugin and job. 
             aps jobs are not duplicated just overwritten. 
         '''
-        task_name = job.action.plugin.name
-#        task_args = job.action.config.args
-        task_args = job.action.args
+        task_name = job.config.plugin.name
+        task_args = job.config.args
         trigger_args = job.schedule.get_args()
         
         task_obj = self.plugin_manager.getPluginByName(task_name,'Task').plugin_object

@@ -170,12 +170,12 @@ class JobView(ModelView):
         and performs callbacks to aisapp to sync enabled jobs in the db
         with scheduled jobs in the scheduler. 
     '''
-    column_list = ('name', 'schedule', 'action', 'enabled', 'running')
-    form_create_rules = ('name', 'schedule', 'action', 'enabled')
-    form_edit_rules = ('name', 'schedule', 'action', 'enabled')
+    column_list = ('name', 'schedule', 'config', 'enabled', 'running')
+    form_create_rules = ('name', 'schedule', 'config', 'enabled')
+    form_edit_rules = ('name', 'schedule', 'config', 'enabled')
 
     form_args = dict (
-       action = dict( #filter down select list to just Task plugins
+       config = dict( #filter down select list to just Task plugins
            query_factory= lambda: db.session.query(Config).filter_by(role="Runtime"),
            allow_blank = False
        ) 
