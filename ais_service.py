@@ -378,17 +378,22 @@ class AISApp(object):
         #add Scheduling Menu
         self.ui.add_view(JobView(Job,db.session, name='Scheduled Jobs'))
         self.ui.add_view(FileAdmin(config.FILESTORE, name="Data Files"))
+        
+        #sqlloghdlr created for plugin use
+        sqlloghdlr = SQLAlchemyHandler()
+        sqlloghdlr.setLevel(logging.DEBUG)
+        sqlloghdlr.setFormatter(logging.Formatter())        
+        
+        
         #Make Plugins menu
         #find plugins with views and widgets available:
         logger.debug("Setting up plugins")
+
         for pi in plugin_manager.getAllPlugins():
             logger.debug("Processing Plugin %s", pi.name)
             po = pi.plugin_object
             po.name = pi.name
-            
-            sqlloghdlr = SQLAlchemyHandler()
-            sqlloghdlr.setLevel(logging.DEBUG)
-            sqlloghdlr.setFormatter(logging.Formatter())
+        
             #give each plugin its own sqllog in its own table 
             if po.use_sqllog:            
                 logger.debug("Config sqllog handler to plugin logger")
@@ -413,7 +418,7 @@ class AISApp(object):
             if po.viewable:
                 #register url view and add to Plugins Menu
                 logger.debug("Plugin Viewable: %s" %pi.name)
-                po.category= "Plugins"
+                po.category= "Modules"
                 self.ui.add_view(po) 
                 
         #Schedule Settings menu
