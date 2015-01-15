@@ -1,5 +1,7 @@
 from flask.ext.admin.contrib.sqla import ModelView
+from flask.ext.admin.contrib.sqla.filters import BooleanEqualFilter
 from flask.ext.admin.base import *
+from sqlalchemy import func
 from flask import Markup,redirect,flash,jsonify
 from wtforms.fields import  TextAreaField, SelectMultipleField
 
@@ -73,6 +75,12 @@ class PluginView(ModelView):
     can_delete = False
     column_list =('name', 'category', 'class_name', 'enabled')
     
+    #use overrides to filter down to just task plugins
+    def get_query(self):
+        return self.session.query(self.model).filter(self.model.category=="Task")
+    def get_count_query(self):
+        return self.session.query(func.count('*')).filter(self.model.category=="Task")
+    
     def update_model(self, form, plugin):
         logger.debug("PluginView on_model_change called")
         success = super(PluginView, self).update_model(form, plugin)
@@ -121,7 +129,7 @@ class AuditorView(ModelView):
             coerce = int
        ),
        plugin = dict( # filter the select list down to just listener plugins
-           query_factory= lambda: db.session.query(Plugin).filter_by(category="Listener", enabled=True),
+           query_factory= lambda: db.session.query(Plugin).filter_by(category="Listener"),
            allow_blank = False
        )
    )

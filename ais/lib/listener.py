@@ -18,6 +18,11 @@ class Listener(PluginObj):
         "EVENT_JOB_ERROR" : EVENT_JOB_ERROR,
         "EVENT_JOB_MISSED" : EVENT_JOB_MISSED    
     }
+    
+    def __init__(self, **kwargs):
+        super(Listener,self).__init__(**kwargs)
+        #make listeneres by default enabled then they can decide if they have views
+        self.enabled = True
 
     def respond(self, event):
         """ Called when object registered as an apscheduler event listener
