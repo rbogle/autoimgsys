@@ -1,3 +1,10 @@
+.panel{
+    padding-right: 30px
+}
+
+.full{
+    padding: 0px;
+}
 
 #server_ctl.panel{
 	padding: 0px;

@@ -376,8 +376,8 @@ class AISApp(object):
         self.ui.hostname = config.HOSTNAME
         
         #add Scheduling Menu
-        self.ui.add_view(JobView(Job,db.session, name='Scheduled Jobs'))
-        self.ui.add_view(FileAdmin(config.FILESTORE, name="Data Files"))
+        self.ui.add_view(JobView(Job,db.session, name='Tasks'))
+        self.ui.add_view(FileAdmin(config.FILESTORE, name="Data"))
         
         #sqlloghdlr created for plugin use
         sqlloghdlr = SQLAlchemyHandler()
@@ -424,11 +424,12 @@ class AISApp(object):
         #Schedule Settings menu
         self.ui.add_view(AuditorView(Auditor,db.session, name='Events', category="Settings"))
         self.ui.add_view(ModelView(Schedule,db.session, name = 'Schedules',category='Settings'))
-        self.ui.add_view(PluginView(Plugin,db.session,name='Modules', category='Settings')) 
         #add Advanced Menu
         self.ui.add_view(ModelView(User,db.session, name='Users', category='Admin')) 
-        self.ui.add_view(ConfigView(Config,db.session,name='Module Configs', category='Admin'))        
+        
+        self.ui.add_view(PluginView(Plugin,db.session,name='Module Admin', category='Admin'))         
         self.ui.add_view(LogView(Log,db.session, name='Module Logs', category='Admin')) 
+        self.ui.add_view(ConfigView(Config,db.session,name='Configurations', category='Admin'))
         
 
 if __name__=='__main__':
