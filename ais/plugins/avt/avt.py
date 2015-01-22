@@ -183,6 +183,9 @@ class AVT(PoweredTask):
         relay_name = kwargs.get('relay_name', None)        
         if relay_name is not None:
             self._powerctlr = self.manager.getPluginByName(relay_name, 'Relay').plugin_object
+        else:
+            self._powerctlr=None
+            
         if not isinstance(self._powerctlr, Relay):
             self._powerctlr = None
             self.logger.error("PowerController is not a Relay Object")          
@@ -226,74 +229,82 @@ class AVT(PoweredTask):
         ]
 
     def start(self, camera_id=-1, properties={}, power_ctl=0):
-        if not self._started: 
-            if self._powerctlr is not None:        
-                self._power(True)
-                self.logger.info("AVT performing delay for powerup waiting %s sec."%self._powerdelay)
-                time.sleep(self._powerdelay)
-               
-            self._setupVimba()
-            
-            camlist = self.listAllCameras()
-            
-            i = 0
-            for cam in camlist:
-                self._camTable[i] = {'id': cam.cameraIdString}
-                i += 1
-    
-            if not len(camlist):
-                raise Exception("Couldn't find any cameras with the Vimba driver.  Use VimbaViewer to confirm you have one connected.")
-    
-            if camera_id < 9000: #camera was passed as an index reference
-                if camera_id == -1:  #accept -1 for "first camera"
-                    camera_id = 0
-    
-                if (camera_id > len(camlist)):
-                    raise Exception("Couldn't find camera at index %d." % camera_id)
-    
-                cam_guid = camlist[camera_id].cameraIdString
-            else:
-                raise Exception("Index %d is too large" % camera_id)
-    
-            self._camera = self._vimba.getCamera(cam_guid)
-            self._camera.openCamera()
-    
-            self.uniqueid = cam_guid
-    
-            #downsize packets to be safe
-            self.setProperty("GevSCPSPacketSize", 1500)
-            self.setProperty("AcquisitionMode","SingleFrame")
-            self.setProperty("TriggerSource","Freerun")
-            self.setProperty("TriggerMode", "On")
-    
-            # TODO: FIX to get valid modes as prop and adj 
-            #       img capture to approp bit depth
-            pxfmt = properties.get('pixel_format', '')
-            if pxfmt not in ('Mono8','BayerGB8'):
-                pxfmt = 'BayerGB12'
-                self._bit_depth = np.uint16
-            else:
-                self._bit_depth = np.uint8
+        try: 
+            if not self._started: 
+                self._started = True 
+                if self._powerctlr is not None:        
+                    self._power(True)
+                    self.logger.info("AVT performing delay for powerup waiting %s sec."%self._powerdelay)
+                    time.sleep(self._powerdelay)
+     
+                self._setupVimba()
                 
-            self.setProperty("PixelFormat", pxfmt)
-    
-            #give some compatablity with other cameras
-            if properties.get("mode", ""):
-                properties.pop("mode")
-    
-            if properties.get("height", ""):
-                properties["Height"] = properties["height"]
-                properties.pop("height")
-    
-            if properties.get("width", ""):
-                properties["Width"] = properties["width"]
-                properties.pop("width")
-    
-            for p in properties:
-                self.setProperty(p, properties[p])
-              
-            self._refreshFrameStats()
-            self._started = True
+                camlist = self.listAllCameras()
+                
+                i = 0
+                for cam in camlist:
+                    self._camTable[i] = {'id': cam.cameraIdString}
+                    i += 1
+        
+                if not len(camlist):
+
+                    raise Exception("Couldn't find any cameras with the Vimba driver.  Use VimbaViewer to confirm you have one connected.")
+        
+                if camera_id < 9000: #camera was passed as an index reference
+                    if camera_id == -1:  #accept -1 for "first camera"
+                        camera_id = 0
+        
+                    if (camera_id > len(camlist)):
+
+                        raise Exception("Couldn't find camera at index %d." % camera_id)
+        
+                    cam_guid = camlist[camera_id].cameraIdString
+                else:
+
+                    raise Exception("Index %d is too large" % camera_id)
+        
+                self._camera = self._vimba.getCamera(cam_guid)
+                self._camera.openCamera()
+        
+                self.uniqueid = cam_guid
+        
+                #downsize packets to be safe
+                self.setProperty("GevSCPSPacketSize", 1500)
+                self.setProperty("AcquisitionMode","SingleFrame")
+                self.setProperty("TriggerSource","Freerun")
+                self.setProperty("TriggerMode", "On")
+        
+                # TODO: FIX to get valid modes as prop and adj 
+                #       img capture to approp bit depth
+                pxfmt = properties.get('pixel_format', '')
+                if pxfmt not in ('Mono8','BayerGB8'):
+                    pxfmt = 'BayerGB12'
+                    self._bit_depth = np.uint16
+                else:
+                    self._bit_depth = np.uint8
+                    
+                self.setProperty("PixelFormat", pxfmt)
+        
+                #give some compatablity with other cameras
+                if properties.get("mode", ""):
+                    properties.pop("mode")
+        
+                if properties.get("height", ""):
+                    properties["Height"] = properties["height"]
+                    properties.pop("height")
+        
+                if properties.get("width", ""):
+                    properties["Width"] = properties["width"]
+                    properties.pop("width")
+        
+                for p in properties:
+                    self.setProperty(p, properties[p])
+                  
+                self._refreshFrameStats()
+                
+        except Exception as e:
+            self.stop()
+            raise e
 
     def stop(self, power_ctl=0):
         if self._started:        
