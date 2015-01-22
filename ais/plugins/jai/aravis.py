@@ -561,6 +561,7 @@ if __name__ == "__main__":
             x, y, width, height = cam.get_region()
             print("Camera model: ", cam.get_model_name())
             print("Vendor Name: ", cam.get_vendor_name())
+            print("Self Name: ", cam.name)
             print("Device id: ", cam.get_device_id())
             print("Image size: ", width, ",", height)
             print("Sensor size: ", cam.get_sensor_size()) 
