@@ -1,4 +1,4 @@
-#
+l#
 #    This source is modified from the python-aravis project in the ctypes-based module.
 #    https://github.com/oroulet/python-aravis
 
@@ -393,7 +393,7 @@ class Camera(Device):
         self._handle = handle
         Device.__init__(self, aravislib, self.get_device())
 
-        self.name = self.get_vendor_name() + b"-" + self.get_device_id()
+        self.name = self.get_vendor_name() + "-" + self.get_device_id()
         self.stream  = self.create_stream()
         logging.info("Created Aravis Camera object: %s" % self.name)
         

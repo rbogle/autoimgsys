@@ -224,6 +224,7 @@ class JAI_AD80GE(PoweredTask):
                 self.logger.debug("Power delay complete, connecting to camera")
             self._ar = Aravis()
             for sens in self._sensors.itervalues():
+                self.logger.debug("Getting Handle for Sensor: %s" %sens.name)
                 sens.cam = self._ar.get_camera(sens.mac) 
             self.logger.info("JAI_AD80GE started")
             self._started = True       
