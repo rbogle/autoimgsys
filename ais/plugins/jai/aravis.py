@@ -1,4 +1,4 @@
-l#
+#
 #    This source is modified from the python-aravis project in the ctypes-based module.
 #    https://github.com/oroulet/python-aravis
 
