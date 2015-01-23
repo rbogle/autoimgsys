@@ -1,0 +1,8 @@
+[Core]
+Name = TaskMonitor
+Module = task_mon
+
+[Documentation]
+Author = Rian Bogle
+Version = 0.1
+description = listener/auditor for task completion  
