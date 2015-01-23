@@ -303,6 +303,7 @@ class AVT(PoweredTask):
                 self._refreshFrameStats()
                 
         except Exception as e:
+            self.logger.error("AVT error on startup: %s" %e)
             self.stop()
             raise e
 
@@ -318,7 +319,7 @@ class AVT(PoweredTask):
                     
                 self._vimba.shutdown()
                 self._vimba = None
-                
+            
             except VimbaException,ve :
                 print "Vimba exception %d: %s" % (ve.errorCode, ve.message)
                 
@@ -355,13 +356,13 @@ class AVT(PoweredTask):
         List of VimbaCamera objects, otherwise empty list
         VimbaCamera objects are defined in the pymba module
         """
-        if not self._started:
+        try:
             cameraIds = self._vimba.getCameraIds()
             ar = []
             for cameraId in cameraIds:
                 ar.append(self._vimba.getCamera(cameraId))
             return ar
-        else:
+        except:
             raise (VimbaException(-5))
             
     def getProperty(self, name):
