@@ -19,8 +19,6 @@ from ais.lib.relay import Relay
 import pprint, time, cv2, traceback, datetime, os
 from collections import OrderedDict
 
-#logger = logging.getLogger(__name__)
-
 class Sensor(object):
     
     def __init__(self, **kwargs):

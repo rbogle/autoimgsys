@@ -190,7 +190,11 @@ class Aravis(object):
     def get_camera(self, serialid=None):
         handle = self.dll.arv_camera_new(serialid.encode())
         if handle:
-            return Camera(self, handle)
+            try:
+                cam = Camera(self, handle)
+            except:
+                raise AravisException("Could not obtain GigE camera with id: %s" %serialid )
+            return cam
         else:
             raise AravisException("Could not obtain GigE camera with id: %s" %serialid )
 
@@ -392,11 +396,9 @@ class Camera(Device):
         self._ar = aravislib
         self._handle = handle
         Device.__init__(self, aravislib, self.get_device())
-        vn = self.get_vendor_name() 
-        id =  self.get_device_id()
-        self.name = str(vn) + "-" + str(id)
+        self.name = self.get_vendor_name()+ "-" + self.get_device_id()
         self.stream  = self.create_stream()
-        logging.info("Created Aravis Camera object: %s" % self.name)
+        #logging.info("Created Aravis Camera object: %s" % self.name)
         
 
     def create_buffers(self, nb = 10):

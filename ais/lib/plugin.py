@@ -12,9 +12,10 @@ class PluginObj(IPlugin, BaseView):
         BaseView.__init__(self, **kwargs)
         self.manager = PluginManagerSingleton.get()
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.enabled = False
+        
         self.viewable = False
         self.widgetized = False
-        self.enabled = False
         self.use_filestore = False
         self.use_sqllog = False
     

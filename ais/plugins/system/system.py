@@ -6,6 +6,7 @@ class System(Task):
     
     def __init__(self, **kwargs):
         super(System, self).__init__(**kwargs)
+        self.enabled = True
         self.viewable = True
         self.widgetized = True
         self.use_filestore = True

@@ -164,7 +164,7 @@ class AISApp(object):
                             name= pi.name, 
                             class_name = po.__class__.__name__,
                             category = cat,
-                            enabled = False
+                            enabled = po.enabled
                             )
                     self.db.session.add(pdb)
             self.db.session.commit()

@@ -33,7 +33,7 @@ class User(db.Model):
     # Required for administrative interface
     def __unicode__(self):
         return self.username
-
+        
 class Log(db.Model):
     __bind_key__ = 'logs'
     id = db.Column(db.Integer, primary_key=True) # auto incrementing
