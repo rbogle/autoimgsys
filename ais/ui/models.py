@@ -33,6 +33,15 @@ class User(db.Model):
     # Required for administrative interface
     def __unicode__(self):
         return self.username
+
+class Event(db.Model):
+    id = db.Column(db.Integer, primary_key=True) # auto incrementing
+    plugin_id = db.Column(db.Integer, db.ForeignKey('plugin.id'))
+    plugin = db.relationship('Plugin')
+    code = db.Column(db.String) # 
+    msg = db.Column(db.String)
+    trace = db.Column(db.String)
+    datetime = db.Column(db.DateTime, default=datetime.datetime.now()) # the current timestamp     
         
 class Log(db.Model):
     __bind_key__ = 'logs'

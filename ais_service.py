@@ -426,10 +426,10 @@ class AISApp(object):
         self.ui.add_view(ModelView(Schedule,db.session, name = 'Schedules',category='Settings'))
         #add Advanced Menu
         self.ui.add_view(ModelView(User,db.session, name='Users', category='Admin')) 
-        
+        self.ui.add_view(ModelView(Event,db.session,name='Event Log', category='Admin'))
         self.ui.add_view(PluginView(Plugin,db.session,name='Module Admin', category='Admin'))         
         self.ui.add_view(LogView(Log,db.session, name='Module Logs', category='Admin')) 
-        self.ui.add_view(ConfigView(Config,db.session,name='Configurations', category='Admin'))
+        self.ui.add_view(ConfigView(Config,db.session,name='Module Confs', category='Admin'))
         
 
 if __name__=='__main__':
