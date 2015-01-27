@@ -1,2 +1,48 @@
 {% extends "admin/master.html" %}
 {% import 'admin/lib.html' as lib with context %}
+
+{% block head %}
+    {{ super() }}
+    {{ lib.form_css() }}
+{% endblock %}
+
+{% block body %}
+<div id='tab-container' class='panel panel-primary full'>
+    <div class='panel-heading'>
+        <div class='panel-title'>System</div>
+    </div>
+    <div class='panel-body'>
+        <div class="container-fluid">
+            {% for (name,body,action) in widgets %}           
+                {%if (loop.index0 % 3) == 0 %} 
+                <div class="row">
+                {%endif%}
+                    <div class="col-sm-4" id="{{name}}">
+                        <div class='panel panel-default full' >
+                            <div class='panel-heading'>{{name}}</div>
+                            <div class='panel-body'> {{body}}</div>
+                            <div class='panel-footer text-right'>{{action}}</div>
+                        </div>
+                    </div>
+               {%if (loop.index0 % 3) == 2 or (loop.last) %} 
+                </div>
+               {%endif%}
+           {%endfor%} 
+        </div>
+    </div>
+</div>
+<div id='status_panel' class='panel panel-success'>
+    <div class='panel-heading'>Status</div>
+    <div class='panel-body'><div class="well" >
+     Status
+     </div></div>
+</div>
+{% endblock %}
+
+{% block tail %}
+  {{ super() }}
+  {{ lib.form_js() }}
+<!-- javascript goes in here-->
+<script>
+</script>
+{% endblock %}
