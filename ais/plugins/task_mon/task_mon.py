@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-
+from flask.ext.admin import expose
+from flask import Markup
 from apscheduler.events import *
 from ais.lib.listener import Listener
-from ais.ui.models import Event,Job
+from ais.ui.models import Event,Job,Plugin
 from ais.ui import db
         
 class Task_Monitor(Listener):
@@ -38,6 +39,12 @@ class Task_Monitor(Listener):
     def plugin_view(self, action=None, plugin=None):
         if plugin is not None:
             plugin = Plugin.query.filtery_by(name=plugin).first()
+
+        w=list()
+        w.append(self.get_errors_widget(plugin))     
+        w.append(self.get_jobs_widget(plugin))
+        w.append(self.get_events_widget(plugin))
+        
         if action == "task_errors":      
             pass
         elif action == "tasks_running":
@@ -51,6 +58,8 @@ class Task_Monitor(Listener):
         return self.render(self.view_template, widgets=w)
     
     def task_error_count(self, plugin=None):
+        if plugin is None:
+            return Event.query.filter_by(code="EVENT_JOB_ERROR").count()
         return Event.query.filter_by(code="EVENT_JOB_ERROR", plugin=plugin).count()
 
     def task_run_count(self):
@@ -65,9 +74,6 @@ class Task_Monitor(Listener):
     def task_events(self, code=None, plugin=None):
         return Event.query.filter_by(code=code, plugin=plugin).all()
         
-    def get_errors_widget(self, plugin= None):
-        pass
-    
     def get_errors_widget(self, plugin= None):
         pass
     
