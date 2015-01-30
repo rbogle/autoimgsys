@@ -54,7 +54,14 @@ class PluginObj(IPlugin, BaseView):
     def widget_view(self):
         template = self.widget_template
         return render_template(template, data=self)
-    
+        
+    def get_configs(self):
+        '''
+            get_configs returns a list of Config objects that
+            the plugin wants to seed the db with. 
+        '''
+        return list()
+        
     @expose('/')
     def plugin_view(self):
         template = self.view_template

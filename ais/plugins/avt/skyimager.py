@@ -230,6 +230,31 @@ class SkyImager(avt.AVT): #note inheritance path due to Yapsy detection rules
                     'datetime':log.created, 'module':log.module}
         return jsonify(logs=data)
 
+    def get_configs(self):
+       cfg = Config(
+           name="HDR 10 Shot", 
+           role="Runtime",
+           args= {
+            'file_prefix': 'hdr',
+            'pixel_format': 'BayerGB8',
+            'sequence':[
+                {'exposure_time': 977},
+                {'exposure_time': 1953},
+                {'exposure_time': 3906},
+                {'exposure_time': 7813},
+                {'exposure_time': 15625},
+                {'exposure_time': 31250},
+                {'exposure_time': 62500},
+                {'exposure_time': 125000},
+                {'exposure_time': 250000},
+                {'exposure_time': 500000},
+                {'exposure_time': 1000000}
+            ]      
+            }
+        )
+       return [cfg]
+
+
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):
         

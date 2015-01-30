@@ -254,8 +254,35 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                 data[log.id]={'msg':log.msg, 'level':log.level, 
                     'datetime':log.created, 'module':log.module}
         return jsonify(logs=data)
-        
-            
+    
+    def get_configs(self):
+        cfg = Config(
+            name ="HDR 10 Shot", 
+            role="Runtime",
+            args={
+                        'pixel_formats':(
+                            {'sensor':'rgb', 'pixel_format': 'BayerRG8'},
+                            {'sensor':'nir', 'pixel_format': 'Mono8'}        
+                        ),
+                        'file_prefix': 'hdr',
+                        'sequence':[
+                            {'exposure_time': 20},
+                            {'exposure_time': 40},
+                            {'exposure_time': 120},
+                            {'exposure_time': 240},
+                            {'exposure_time': 480},
+                            {'exposure_time': 960},
+                            {'exposure_time': 1920},
+                            {'exposure_time': 3840},
+                            {'exposure_time': 7680},
+                            {'exposure_time': 15360},
+                            {'exposure_time': 30720},
+                        ]       
+                    }
+        )
+        return [cfg]
+       
+      
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):
         

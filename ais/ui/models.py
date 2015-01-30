@@ -121,11 +121,12 @@ class Job(db.Model):
         
 class Config(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False, unique=True)
+    name = db.Column(db.String(100), nullable=False)
     plugin_id = db.Column(db.Integer, db.ForeignKey('plugin.id'))
     plugin = db.relationship('Plugin')
     role = db.Column(db.Enum('Initalize', 'Runtime', name='config_roles'))
     args = db.Column(db.PickleType)
     
     def __repr__(self):
-        return "%s --> %s" %(self.plugin.name,self.name)
+        pname = "" if self.plugin is None else self.plugin.name
+        return "%s --> %s" %(pname,self.name)

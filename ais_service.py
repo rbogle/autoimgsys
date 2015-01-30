@@ -320,7 +320,7 @@ class AISApp(object):
         logger.debug("Flask root %s" %self.flask.root_path)
         self.db = db
         self.database_file = config.DATABASE_PATH+config.APP_DATABASE_FILE
-        
+        self.seed_db = False
             
         #setup plugin management and discovery
         plugin_manager = PluginManagerSingleton.get()
@@ -339,6 +339,7 @@ class AISApp(object):
         if not os.path.exists(self.database_file):
             logger.info("Initializing DB")
             self.initalize_db()
+            self.seed_db = True
 
         #make sure filestore exists for FileAdmin and plugins
         if not os.path.isdir(config.FILESTORE):    
@@ -393,7 +394,14 @@ class AISApp(object):
             logger.debug("Processing Plugin %s", pi.name)
             po = pi.plugin_object
             po.name = pi.name
-        
+            
+            #starting with clean db, so give plugins opp to seed db.
+            if self.seed_db:
+                plg = Plugin.query.filter_by(name=po.name).first()
+                for cfg in po.get_configs():
+                    cfg.plugin = plg
+                    db.session.add(cfg)
+                db.session.commit()
             #give each plugin its own sqllog in its own table 
             if po.use_sqllog:            
                 logger.debug("Config sqllog handler to plugin logger")
