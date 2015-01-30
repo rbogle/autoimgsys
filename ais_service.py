@@ -150,6 +150,10 @@ class AISApp(object):
                 if pdb.name not in pinames.keys(): #plugin no longer loaded
                     logger.debug("Removing plugin %s from db" %pdb.name) 
                     self.remove_plugin_jobs(pdb.id)
+                    #remove configs for this plugin
+                    cfgs = Config.query.filter_by(plugin=pdb).all()
+                    for cfg in cfgs:
+                        db.session.delete(cfg)
                     db.session.delete(pdb)
                 else:
                     pinames[pdb.name].enabled = pdb.enabled                    
@@ -167,6 +171,10 @@ class AISApp(object):
                             enabled = po.enabled
                             )
                     self.db.session.add(pdb)
+                    #add default configs if po has them.
+                    for cfg in po.get_configs():
+                        cfg.plugin = pdb
+                        self.db.session.add(cfg)
             self.db.session.commit()
         
     def schedule_jobs_from_db(self):
@@ -395,13 +403,13 @@ class AISApp(object):
             po = pi.plugin_object
             po.name = pi.name
             
-            #starting with clean db, so give plugins opp to seed db.
-            if self.seed_db:
-                plg = Plugin.query.filter_by(name=po.name).first()
-                for cfg in po.get_configs():
-                    cfg.plugin = plg
-                    db.session.add(cfg)
-                db.session.commit()
+#            #starting with clean db, so give plugins opp to seed db.
+#            if self.seed_db:
+#                plg = Plugin.query.filter_by(name=po.name).first()
+#                for cfg in po.get_configs():
+#                    cfg.plugin = plg
+#                    db.session.add(cfg)
+#                db.session.commit()
             #give each plugin its own sqllog in its own table 
             if po.use_sqllog:            
                 logger.debug("Config sqllog handler to plugin logger")
