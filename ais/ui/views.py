@@ -57,6 +57,15 @@ class DashboardView(AdminIndexView):
         return self.render('admin/index.html', 
                           server_status=status, server_status_msg=msg, 
                           jobs_scheduled=jobs, widgets=w, time=now)
+                          
+class EventView(ModelView):
+    can_edit = False
+    can_create = False
+    can_delete = False
+    column_searchable_list=('msg', 'trace')
+    column_filters = ('datetime', 'plugin','code', 'msg', 'trace')
+    column_list =('datetime','plugin','code', 'msg', 'trace')                       
+                          
 class LogView(ModelView):
     can_edit = False
     can_create = False

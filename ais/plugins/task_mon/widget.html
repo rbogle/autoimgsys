@@ -1,2 +1,9 @@
 Number of Error Events:
-<span style="color: red">{{data.task_error_count()}}</span>
+{% set err_count = data.task_error_count() %}
+<span style="color: 
+{% if err_count==0 %}
+green
+{% else %}
+red
+{% endif %}
+; font-size: 1.2em; font-weight: bold;">{{err_count}}</span>

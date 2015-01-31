@@ -9,7 +9,7 @@
 {% block body %}
 <div id='tab-container' class='panel panel-primary full'>
     <div class='panel-heading'>
-        <div class='panel-title'>System</div>
+        <div class='panel-title'>Task Monitoring</div>
     </div>
     <div class='panel-body'>
         <div class="container-fluid">
@@ -32,10 +32,10 @@
     </div>
 </div>
 <div id='status_panel' class='panel panel-success'>
-    <div class='panel-heading'>Status</div>
-    <div class='panel-body'><div class="well" >
-     Status
-     </div></div>
+    <div class='panel-heading'>Task Event Status:</div>
+    <div class='panel-body'><pre id="logs" style="max-height: 30em; overflow-y: auto; tab-size: 4">
+        {{task_logs}}
+    </pre></div>
 </div>
 {% endblock %}
 
