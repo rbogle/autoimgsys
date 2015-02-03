@@ -56,4 +56,5 @@
     to { transform: scale(1) rotate(360deg);}
 }
 
-
+dt{ margin-bottom: 2px; float: left;}
+dd{ margin-bottom: 5px; padding-left: 30%; }
