@@ -1,0 +1,8 @@
+{% import 'admin/lib.html' as lib with context %}
+
+{% call lib.form_tag(dtform) %}
+    {{ lib.render_form_fields(dtform, form_opts=dtopts) }}
+    {{ lib.render_form_buttons(return_url) }}
+{% endcall %}
+
+{{ lib.form_js() }}
