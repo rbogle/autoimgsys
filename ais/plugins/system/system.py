@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 from flask.ext.admin import expose
-from flask import Markup, jsonify
+from flask import Markup, jsonify, redirect
 from flask.ext.admin.form import BaseForm
 from wtforms import SelectField, TextField
 from flask.ext.admin.form.fields import DateTimeField
 from ais.lib.task import Task
+from ais.ui.models import Event,Log,Plugin
+from ais.ui import config
 import subprocess,datetime,pytz
-from tzlocal import get_localzone
+from tzlocal import get_localzone, reload_localzone
 from collections import OrderedDict
 
 def get_tzlist():
@@ -16,14 +18,10 @@ def get_tzlist():
         tzlist.append((tz,tz))
     return tzlist
 
-def get_currtz():
-    return get_localzone().zone
-
-
 class DateTimeForm(BaseForm):
 
     datetime = DateTimeField("New Date and Time")
-    timezone = SelectField("Timezone", choices = get_tzlist(), default=get_currtz())
+    timezone = SelectField("Timezone", choices = get_tzlist(), default= lambda: reload_localzone().zone)
             
     
 class System(Task):
@@ -48,23 +46,26 @@ class System(Task):
         
         action = request.args.get('action', None)
         modal = request.args.get('modal', None)
+        
         #datetime form submitted
         if h.is_form_submitted():
             flash("Date Time has been configured")
             self._conf_datetime(request.form)          
-            
+
         #handle actions
         if action is not None:
             if action == "get_events":
                 flash("Events Log will download shortly.")                
-                #return self._download_events()
+                return self._download_events()
             if action == 'get_logs':
                 flash("Logs will download shortly.")
-                #return self._download_logs()
+                return self._download_logs()
             if action == 'reboot_sys':
                 flash("reboot requested", "success")
+                self._reboot_sys()
             if action == 'reset_ais':
                 flash("Reset of AIS requested")
+                self._reset_sys()
  
         #return modal dialog     
         if modal is not None:
@@ -192,32 +193,94 @@ class System(Task):
         return OrderedDict([('Hostname',hostname),('Kernel',kernel),
                             ('Time', now),('Up-Time', uptime),('Disks', disks), ('Net',ifaces)])
     
+    def _reset_sys(self):
+        
+        db_path = config.DATABASE_PATH
+        try:
+            pid = subprocess.check_output(['pgrep', 'ais_service'])
+        except subprocess.CalledProcessError as cpe:
+            self.logger.error(cpe.output)
+            return
+            
+        cmds = [
+            "sudo rm %s*.sqlite" %db_path,
+            "sudo kill -HUP %s" %pid
+        ]
+
+        try:
+            for c in cmds:
+                self.logger.debug("Doing: %s" %c)
+                subprocess.check_output(c.split())
+        except subprocess.CalledProcessError as cpe:
+            self.logger.error(cpe.output)
+    
     def _reboot_sys(self):
         self.logger.info("System Module: Reboot Requested")
-        command = "/usr/bin/sudo /sbin/shutdown -r now"
-        subprocess.call(command.split(),shell=True)
-
+        command = "sudo shutdown -r now"
+        try:
+            subprocess.check_output(command.split())
+        except subprocess.CalledProcessError as cpe:
+            self.logger.error(cpe.output)
+            
     def _conf_datetime(self, form):
         tz=form.get('timezone')
         dt = form.get('datetime')
         self.logger.info("tz: %s, datetime: %s" %(tz,dt))
         #handle tz
-        tz_now = get_localzone().zone
+        tz_now = reload_localzone().zone
         if tz!=tz_now:
             self._set_timezone(tz)
         #handle datetime
         if dt!="":
             self._set_datetime(dt)
         #handle ntp 
+            
     def _set_datetime(self, datestr):
-        pass
-    
+        cmd = "sudo date --set %s" %datestr
+        try:
+           output= subprocess.check_output(cmd.split())
+           self.logger.info("DateTime set to: %s" %output)
+        except subprocess.CalledProcessError as cpe:
+            self.logger.error(cpe.output)
+            
     def _set_timezone(self, tzname):
-        pass
-       
+        #TODO specific to Ubuntu distro
+        cmds=[
+            "sudo cp /etc/localtime /etc/localtime.old",
+            "sudo ln -sf /usr/share/zoneinfo/%s /etc/localtime" %tzname,
+            "sudo mv /tmp/timezone /etc/timezone"
+        ]
+        #make a tmp file then mv it over to /etc/timezone
+        with open('/tmp/timezone', 'wt') as outf:
+            outf.write(tzname+'\n')        
+        try:        
+            for c in cmds:
+                subprocess.check_output(c.split())
+            self.logger.info("Timezone Changed to %s"%tzname)
+        except subprocess.CalledProcessError as cpe:
+            self.logger.error(cpe.output)
+            
     def _download_logs(self):
-        pass
+        import StringIO,csv
+        from flask import send_file
+        sio = StringIO.StringIO()
+        cw = csv.writer(sio)
+        cw.writerow(['Datetime','Plugin','Module', 'Level', 'Msg', 'Trace'])
+        for log in Log.query.all():
+            cw.writerow([log.created, log.logger, log.module, log.level, log.msg, log.trace])
+        sio.seek(0)
+        return send_file(sio, attachment_filename="AIS_Logs.csv", as_attachment=True)
     
     def _download_events(self):
-        pass
+        import StringIO,csv
+        from flask import send_file
+        sio = StringIO.StringIO()
+        cw = csv.writer(sio)
+        cw.writerow(['Datetime','Plugin','Event', 'Msg', 'Trace'])
+        for evt in Event.query.all():
+            pn = evt.plugin.name
+            cw.writerow([evt.datetime, pn, evt.code, evt.msg, evt.trace])
+        sio.seek(0)
+        return send_file(sio, attachment_filename="AIS_Events.csv", as_attachment=True)
+        
     
