@@ -7,7 +7,7 @@ from flask.ext.admin.form.fields import DateTimeField
 from ais.lib.task import Task
 from ais.ui.models import Event,Log,Plugin
 from ais.ui import config
-import subprocess,datetime,pytz
+import subprocess,datetime,pytz,re
 from tzlocal import get_localzone, reload_localzone
 from collections import OrderedDict
 
@@ -184,12 +184,22 @@ class System(Task):
                 l = l[5]+'\t'+l[1]+'\t'+l[4]+'\t'+l[0]
                 disks += Markup(l+"<br/>")
         #eth info        
-        ifcfg = subprocess.check_output('/sbin/ifconfig').split('\n')
+        ifcfg = subprocess.check_output('/sbin/ifconfig').split('\n\n')
         ifaces = ""
-        for i in range(len(ifcfg))[0::10]:
-            data=','.join( ifcfg[i:i+2]).split()
-            data[7] = data[7].split(":")[1]
-            ifaces += Markup(data[0]+": "+data[7]+"<br/>")
+
+        for i in ifcfg:
+            if i != "":    
+                net = re.search("^[0-9a-z]*\w",i)
+                if net is not None:
+                    net = net.group(0)
+                addr= re.search("\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}",i)
+                if addr is not None:
+                    addr = addr.group(0)
+                    ifaces += Markup(net+": "+addr+"<br/>")
+#        for i in range(len(ifcfg))[0::10]:
+#            data=','.join( ifcfg[i:i+2]).split()
+#            data[7] = data[7].split(":")[1]
+#            ifaces += Markup(data[0]+": "+data[7]+"<br/>")
         return OrderedDict([('Hostname',hostname),('Kernel',kernel),
                             ('Time', now),('Up-Time', uptime),('Disks', disks), ('Net',ifaces)])
     
