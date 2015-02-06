@@ -218,7 +218,7 @@ class System(Task):
             os.remove(f)
         #now hup the service to restart
         try:
-            self.logger.debug("Doing: %s" %c,d)
+            self.logger.debug("Doing: %s" %cmd)
             subprocess.check_output(cmd.split())
         except subprocess.CalledProcessError as cpe:
             self.logger.error(cpe.output)
