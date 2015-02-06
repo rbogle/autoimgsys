@@ -214,7 +214,7 @@ class System(Task):
             return         
         cmd = "sudo kill -HUP %s" %pid
         #delete dbs         
-        for f in glob.glob(dbpath+"/*.sqlite"):
+        for f in glob.glob(db_path+"*.sqlite"):
             os.remove(f)
         #now hup the service to restart
         try:
