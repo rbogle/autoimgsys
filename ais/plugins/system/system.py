@@ -7,7 +7,7 @@ from flask.ext.admin.form.fields import DateTimeField
 from ais.lib.task import Task
 from ais.ui.models import Event,Log,Plugin
 from ais.ui import config
-import subprocess,datetime,pytz,re
+import subprocess,datetime,pytz,re,os,glob
 from tzlocal import get_localzone, reload_localzone
 from collections import OrderedDict
 
@@ -206,21 +206,20 @@ class System(Task):
     def _reset_sys(self):
         
         db_path = config.DATABASE_PATH
+        
         try:
             pid = subprocess.check_output(['pgrep', 'ais_service'])
         except subprocess.CalledProcessError as cpe:
             self.logger.error(cpe.output)
-            return
-            
-        cmds = [
-            "sudo rm %s*.sqlite" %db_path,
-            "sudo kill -HUP %s" %pid
-        ]
-
+            return         
+        cmd = "sudo kill -HUP %s" %pid
+        #delete dbs         
+        for f in glob.glob(dbpath+"/*.sqlite"):
+            os.remove(f)
+        #now hup the service to restart
         try:
-            for c in cmds:
-                self.logger.debug("Doing: %s" %c)
-                subprocess.check_output(c.split())
+            self.logger.debug("Doing: %s" %c,d)
+            subprocess.check_output(cmd.split())
         except subprocess.CalledProcessError as cpe:
             self.logger.error(cpe.output)
     
