@@ -74,22 +74,17 @@ class JAI_AD80GE(PoweredTask):
                 self._sensors[sname].cam.set_pixel_format_as_string(pf.get("pixel_format", None))
             #do we have a sequence to take or one-shot
             self.last_run['time'] = datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S")
-            #configure camera capture params and start acquisition mode           
-            #self.start_acquisition()
             if sequence is not None:
                 if isinstance(sequence,list):
                     for i,shot in enumerate(sequence):
                         fname=filename+"_"+ "%02d" % i
                         self.configure_shot(**shot)
-                        time.sleep(.250)
                         self.save_image(fname,imgtype)
             else:
                 #looking for settings for one-shot
                 self.configure_shot(**kwargs)
-                time.sleep(.250)
                 self.save_image(filename,imgtype)
-            #stop aquistion mode
-            #self.stop_acquisition()    
+  
             if not persist:
                 self.stop()        
         except Exception as e:
@@ -124,7 +119,8 @@ class JAI_AD80GE(PoweredTask):
                 sensor_status["Image size"]= "(%s,%s)" %(w,h)
                 sensor_status["Image offset"] = "(%s,%s)" %(x,y)
                 sensor_status["Sensor size"]=sensor.cam.get_sensor_size()
-                sensor_status["Exposure"]=sensor.cam.get_integer_feature("ExposureTimeAbs")
+                sensor_status["Exposure"]=sensor.cam.get_exposure_time()
+                sensor_status["Gain"]=sensor.cam.get_gain()
                 sensor_status["Frame rate"]=sensor.cam.get_frame_rate()
                 sensor_status["Payload"]=sensor.cam.get_payload()
                 sensor_status["AcquisitionMode"]=sensor.cam.get_string_feature("AcquisitionMode")
@@ -248,42 +244,12 @@ class JAI_AD80GE(PoweredTask):
             self.logger.info("JAI_AD80GE is powering down")        
         self._started = False 
 
-    def start_acquisition(self):
-        if not self._started:
-           self.logger.error("Camera device must be started before capture")
-           return None
-        else:            
-            for sens in self._sensors.itervalues():
-                sens.cam.set_string_feature("SyncMode", "Sync")
-                sens.cam.set_string_feature("ExposureMode", "EdgePreSelect")
-                sens.cam.set_string_feature("TriggerSelector", "CameraTrigger0") 
-                sens.cam.set_string_feature("TriggerSource", "UserOutput0")                 
-                sens.cam.start_acquisition()
-                
-    def stop_acquisition(self):
-        if not self._started:
-           self.logger.error("Camera device must be started before capture")
-           return None
-        else: 
-            for sens in self._sensors.itervalues():
-                sens.cam.stop_acquisition()            
-                
-    def trigger_frame_cap(self):
-        sens = self._sensors.itervalues().next()
-        sens.cam.set_integer_feature("SoftwareTrigger0", 0)
-        sens.cam.set_integer_feature("SoftwareTrigger0", 1)
-        sens.cam.set_integer_feature("SoftwareTrigger0", 0)  
         
     def save_image(self, name, imgtype=".tif"):
         if not self._started:
             self.logger.error("Camera device must be started before capture")
             return None
-        else:
-#            for sens in self._sensors.itervalues():
-#                sens.cam.create_buffers(1)
-#                
-#            self.trigger_frame_cap();
-            
+        else:         
             for sens in self._sensors.itervalues():
                 sens.cam.create_buffers(1)
                 #data = sens.cam.get_frame()
@@ -322,9 +288,8 @@ class JAI_AD80GE(PoweredTask):
     def configure_shot(self, **kwargs):
         if self._started:
             for sensor in self._sensors.itervalues():
-                sensor.cam.set_string_feature("ShutterMode", "ExposureTimeAbs")
-                sensor.cam.set_integer_feature("ExposureTimeAbs", kwargs.get("exposure_time", 33319))
-                #sensor.cam.set_gain(kwargs.get("gain", 0))
+                sensor.cam.set_exposure_time(kwargs.get("exposure_time", 33342))
+                sensor.cam.set_integer_feature("GainRaw", kwargs.get("gain", 0))
                 max_width,max_height  = sensor.cam.get_sensor_size()
                 #Set ROI
                 sensor.cam.set_region(kwargs.get("offset_x", 0),
@@ -387,6 +352,13 @@ class JAI_AD80GE(PoweredTask):
         frame = None
         if sensor is not None:
             sensor.cam.start_acquisition_continuous() 
+            #sensor.cam.start_acquisition_trigger()
+            #sensor.cam.trigger()            
+            exp = sensor.cam.get_exposure_time()
+            gain = sensor.cam.get_gain();
+            self.logger.debug("Jai ExposureTime: %d, GainRaw: %d " % (exp,gain) )
+            sensor.cam.get_frame()
+            time.sleep(.100)
             frame = sensor.cam.get_frame()
             sensor.cam.stop_acquisition()
         else:
