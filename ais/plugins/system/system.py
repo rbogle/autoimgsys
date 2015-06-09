@@ -218,10 +218,10 @@ class System(Task):
             os.remove(f)
         #now hup the service to restart
         try:
-            self.logger.debug("Doing: %s" %cmd)
+            #self.logger.debug("Doing: %s" %cmd)
             subprocess.check_output(cmd.split())
         except subprocess.CalledProcessError as cpe:
-            self.logger.error(cpe.output)
+            exit()
     
     def _reboot_sys(self):
         self.logger.info("System Module: Reboot Requested")

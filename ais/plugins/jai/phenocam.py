@@ -31,7 +31,7 @@ class InitArgsForm(Form):
 class TestParamsForm(Form):
     id = HiddenField()
     exposure = IntegerField("Exposure 20-33333 uS", default=15000, validators=[validators.NumberRange(min=20, max=33333)])
-    gain = IntegerField("Gain -3 to 21db", default=0, validators=[validators.NumberRange(min=-3, max=21)])    
+    #gain = IntegerField("Gain -3 to 21db", default=0, validators=[validators.NumberRange(min=-3, max=21)])    
 
 
 class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection rules
@@ -170,7 +170,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                     {'pixel_format': 'Mono8', 'sensor': 'nir'}
                 )
                 kwargs['exposure_time'] = form.exposure.data
-                kwargs['gain']= form.gain.data
+                #kwargs['gain']= form.gain.data
                 kwargs['persist']=True
                 try:
                     self.run(**kwargs)
