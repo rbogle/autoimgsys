@@ -32,7 +32,7 @@ class TestParamsForm(Form):
     id = HiddenField()
     exposure = IntegerField("Exposure 20-33333 uS", default=15000, validators=[validators.NumberRange(min=20, max=33333)])
     gain = IntegerField("Gain -89 to 593", default=0, validators=[validators.NumberRange(min=-89, max=593)])    
-
+    obmode = BooleanField("Optical Black Mode?", default=False)
 
 class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection rules
     
@@ -165,9 +165,9 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                 kwargs = {'sub_dir':'test', 'date_dir': None, 'date_pattern': None}
                 kwargs['file_prefix']="PhenoCam_Test"
                 kwargs['image_type'] = 'jpg'
-                kwargs['pixel_formats']=(
-                    {'pixel_format': 'BayerRG8', 'sensor': 'rgb'}, 
-                    {'pixel_format': 'Mono8', 'sensor': 'nir'}
+                kwargs['sensor_confs']=(
+                    {'pixel_format': 'BayerRG8', 'sensor': 'rgb', 'ob_mode': form.obmode.data}, 
+                    {'pixel_format': 'Mono8', 'sensor': 'nir', 'ob_mode': form.obmode.data}
                 )
                 kwargs['exposure_time'] = form.exposure.data
                 kwargs['gain']= form.gain.data

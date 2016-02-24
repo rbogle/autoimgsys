@@ -68,16 +68,28 @@ class JAI_AD80GE(PoweredTask):
                                  datepattern,  subdir=subdir, split = split, nest = nest)
             imgtype = kwargs.get("image_type", 'tif')
             sequence = kwargs.get('sequence', None)
-            pixformats = kwargs.get("pixel_formats", ())
+#            pixformats = kwargs.get("pixel_formats", ())
             # do common configuration for sensors
             #TODO we need to use the configure_sensor routine to allow flex conf
-            for pf in pixformats:
-                sname = pf.get("sensor", None)                
-                self._sensors[sname].cam.set_pixel_format_as_string(pf.get("pixel_format", None))
+            sensor_confs = kwargs.get("sensor_confs", ())
+            for sc in sensor_confs:
+                sname = sc.get("sensor", None)                
+                self._sensors[sname].cam.set_pixel_format_as_string(sc.get("pixel_format", None))
                 # set shutter mode to abs time
                 self._sensors[sname].cam.set_string_feature("ShutterMode", "ExposureTimeAbs")
                 # set optical black mode to on
-                self._sensors[sname].cam.write_register(0xa41c, 1)
+                ob_mode = sc.get("ob_mode", False)
+                if ob_mode:
+                    self._sensors[sname].cam.write_register(0xa41c, 1)
+                else:
+                    self._sensors[sname].cam.write_register(0xa41c, 0)
+#            for pf in pixformats:
+#                sname = pf.get("sensor", None)                
+#                self._sensors[sname].cam.set_pixel_format_as_string(pf.get("pixel_format", None))
+#                # set shutter mode to abs time
+#                self._sensors[sname].cam.set_string_feature("ShutterMode", "ExposureTimeAbs")
+#                # set optical black mode to on
+#                self._sensors[sname].cam.write_register(0xa41c, 1)
             #do we have a sequence to take or one-shot
             self.last_run['time'] = datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S")
             if sequence is not None:
