@@ -68,10 +68,25 @@ class JAI_AD80GE(PoweredTask):
                                  datepattern,  subdir=subdir, split = split, nest = nest)
             imgtype = kwargs.get("image_type", 'tif')
             sequence = kwargs.get('sequence', None)
+            # Get the sensor configurations
+            sensor_confs = kwargs.get("sensors", ())
+            for sc in sensor_confs:
+                sname = sc.get("sensor", None) 
+                def_fmts = {'rgb': 'BayerRG8', 'nir': 'Mono8'}
+                if sname in def_fmts.keys():
+                    self._sensors[sname].cam.set_pixel_format_as_string(sc.get("pixel_format", def_fmts.get(sname,None)))   
+                    ob_mode = sc.get('ob_mode', False)
+                    if ob_mode:
+                        self._sensors[sname].cam.write_register(0xa41c,1)
+                    else:
+                        self._sensors[sname].cam.write_register(0xa41c,0)
+                    
+            # Leave in for backward compat on configs        
             pixformats = kwargs.get("pixel_formats", ())
             for pf in pixformats:
                 sname = pf.get("sensor", None)                
                 self._sensors[sname].cam.set_pixel_format_as_string(pf.get("pixel_format", None))
+                
             #do we have a sequence to take or one-shot
             self.last_run['time'] = datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S")
             if sequence is not None:
@@ -116,9 +131,12 @@ class JAI_AD80GE(PoweredTask):
                
                 sensor_status["Camera model"] = sensor.cam.get_model_name()
                 (x,y,w,h) = sensor.cam.get_region()
-                sensor_status["Image size"]= "(%s,%s)" %(w,h)
+                mw=sensor.cam.get_integer_feature("WidthMax")
+                mh=sensor.cam.get_integer_feature("HeightMax")
+                sensor_status["Region size"]= "(%s,%s)" %(w,h)
                 sensor_status["Image offset"] = "(%s,%s)" %(x,y)
                 sensor_status["Sensor size"]=sensor.cam.get_sensor_size()
+                sensor_status["Max size"]= "(%s,%s)" %(mw,mh)
                 sensor_status["Exposure"]=sensor.cam.get_exposure_time()
                 sensor_status["Gain"]=sensor.cam.get_gain()
                 sensor_status["Frame rate"]=sensor.cam.get_frame_rate()
@@ -175,7 +193,20 @@ class JAI_AD80GE(PoweredTask):
         if not isinstance(self._powerctlr, Relay):
             self.logger.error("Plugin %s is not available" %relay_name)          
   
-        
+    def device_reset(self):
+        try:
+            if not self._started:   
+                self.start()     
+            for sensor in self._sensors.itervalues():
+                sensor.cam.set_integer_feature("DeviceReset", 1)
+        except Exception as e:
+            try: 
+                self.stop()
+            except:
+                pass
+            self.logger.error( str(e))
+            self.logger.error( traceback.format_exc())
+            
     def get_configure_properties(self):
         return [
             ('sensors',"Sensor List" ,"List with {name=sensorname, mac=###}"),
@@ -183,6 +214,7 @@ class JAI_AD80GE(PoweredTask):
             ('relay_delay', "Delay (Sec)", "Number of seconds to wait after enabling Relay."), 
             ('relay_port',"Port Number", "Port on Relay to toggle for control.")
         ]
+        
     def get_run_properties(self):    
         '''
                     date_pattern (opt) : passed as strftime format
@@ -290,12 +322,14 @@ class JAI_AD80GE(PoweredTask):
             for sensor in self._sensors.itervalues():
                 sensor.cam.set_exposure_time(kwargs.get("exposure_time", 33342))
                 sensor.cam.set_integer_feature("GainRaw", kwargs.get("gain", 0))
-                max_width,max_height  = sensor.cam.get_sensor_size()
+                #max_width,max_height  = sensor.cam.get_sensor_size()
+                max_width=sensor.cam.get_integer_feature("WidthMax")
+                max_height=sensor.cam.get_integer_feature("HeightMax")
                 #Set ROI
                 sensor.cam.set_region(kwargs.get("offset_x", 0),
                                       kwargs.get("offset_y", 0),                                      
                                       kwargs.get("width", max_width),
-                                      kwargs.get("weight", max_height))
+                                      kwargs.get("height", max_height))
         else:
             self.logger.error("JAI_AD80GE is not started")
             raise Exception("JAI Camera is not started.")
