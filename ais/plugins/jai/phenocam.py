@@ -32,7 +32,8 @@ class TestParamsForm(Form):
     id = HiddenField()
     exposure = IntegerField("Exposure 20-33333 uS", default=15000, validators=[validators.NumberRange(min=20, max=33333)])
     gain = IntegerField("Gain -89 to 593", default=0, validators=[validators.NumberRange(min=-89, max=593)])    
-    obmode = BooleanField("Optical Black Mode?", default=False)
+    obmode = BooleanField("OpticalBlack Mode", default=False)
+
 
 class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection rules
     
@@ -165,7 +166,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                 kwargs = {'sub_dir':'test', 'date_dir': None, 'date_pattern': None}
                 kwargs['file_prefix']="PhenoCam_Test"
                 kwargs['image_type'] = 'jpg'
-                kwargs['sensor_confs']=(
+                kwargs['sensors']=(
                     {'pixel_format': 'BayerRG8', 'sensor': 'rgb', 'ob_mode': form.obmode.data}, 
                     {'pixel_format': 'Mono8', 'sensor': 'nir', 'ob_mode': form.obmode.data}
                 )
@@ -195,7 +196,13 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                 return content
         d=self._powerdelay
         return self.render(self.path+"/test.html", test_form = form, delay=d)
-    
+        
+    def do_device_reset(self):
+        from flask import flash,redirect
+        self.device_reset()      
+        flash("Issued Device Reset")
+        return redirect('/phenocam')
+        
     def do_reinit(self):
         from flask import flash, redirect
         icfg = Config.query.join(Plugin).filter(Plugin.name==self.name).filter(Config.role=="Initalize").first()
@@ -260,9 +267,9 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             name ="HDR 10 Shot", 
             role="Runtime",
             args={
-                        'pixel_formats':(
-                            {'sensor':'rgb', 'pixel_format': 'BayerRG8'},
-                            {'sensor':'nir', 'pixel_format': 'Mono8'}        
+                        'sensors':(
+                            {'sensor':'rgb', 'pixel_format': 'BayerRG8', 'ob_mode': False},
+                            {'sensor':'nir', 'pixel_format': 'Mono8','ob_mode': False}        
                         ),
                         'file_prefix': 'hdr',
                         'sequence':[
@@ -297,6 +304,8 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         run_cfg = None
         action = request.args.get('action')
         if action is not None:
+            if action == "reset":
+                return self.do_device_reset()
             if action == "reinit":
                 return self.do_reinit()
             if action == "test":

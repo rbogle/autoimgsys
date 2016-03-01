@@ -68,28 +68,25 @@ class JAI_AD80GE(PoweredTask):
                                  datepattern,  subdir=subdir, split = split, nest = nest)
             imgtype = kwargs.get("image_type", 'tif')
             sequence = kwargs.get('sequence', None)
-#            pixformats = kwargs.get("pixel_formats", ())
-            # do common configuration for sensors
-            #TODO we need to use the configure_sensor routine to allow flex conf
-            sensor_confs = kwargs.get("sensor_confs", ())
+            # Get the sensor configurations
+            sensor_confs = kwargs.get("sensors", ())
             for sc in sensor_confs:
-                sname = sc.get("sensor", None)                
-                self._sensors[sname].cam.set_pixel_format_as_string(sc.get("pixel_format", None))
-                # set shutter mode to abs time
-                self._sensors[sname].cam.set_string_feature("ShutterMode", "ExposureTimeAbs")
-                # set optical black mode to on
-                ob_mode = sc.get("ob_mode", False)
-                if ob_mode:
-                    self._sensors[sname].cam.write_register(0xa41c, 1)
-                else:
-                    self._sensors[sname].cam.write_register(0xa41c, 0)
-#            for pf in pixformats:
-#                sname = pf.get("sensor", None)                
-#                self._sensors[sname].cam.set_pixel_format_as_string(pf.get("pixel_format", None))
-#                # set shutter mode to abs time
-#                self._sensors[sname].cam.set_string_feature("ShutterMode", "ExposureTimeAbs")
-#                # set optical black mode to on
-#                self._sensors[sname].cam.write_register(0xa41c, 1)
+                sname = sc.get("sensor", None) 
+                def_fmts = {'rgb': 'BayerRG8', 'nir': 'Mono8'}
+                if sname in def_fmts.keys():
+                    self._sensors[sname].cam.set_pixel_format_as_string(sc.get("pixel_format", def_fmts.get(sname,None)))   
+                    ob_mode = sc.get('ob_mode', False)
+                    if ob_mode:
+                        self._sensors[sname].cam.write_register(0xa41c,1)
+                    else:
+                        self._sensors[sname].cam.write_register(0xa41c,0)
+                    
+            # Leave in for backward compat on configs        
+            pixformats = kwargs.get("pixel_formats", ())
+            for pf in pixformats:
+                sname = pf.get("sensor", None)                
+                self._sensors[sname].cam.set_pixel_format_as_string(pf.get("pixel_format", None))
+                
             #do we have a sequence to take or one-shot
             self.last_run['time'] = datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S")
             if sequence is not None:
@@ -133,15 +130,18 @@ class JAI_AD80GE(PoweredTask):
                 sensor_status["Current IP Addr"]='%(o1)s.%(o2)s.%(o3)s.%(o4)s' % locals()
                
                 sensor_status["Camera model"] = sensor.cam.get_model_name()
+                sensor_status["Device Version"] = sensor.cam.get_string_feature("DeviceVersion")
                 (x,y,w,h) = sensor.cam.get_region()
-                sensor_status["Image size"]= "(%s,%s)" %(w,h)
+                mw=sensor.cam.get_integer_feature("WidthMax")
+                mh=sensor.cam.get_integer_feature("HeightMax")
+                sensor_status["Region size"]= "(%s,%s)" %(w,h)
                 sensor_status["Image offset"] = "(%s,%s)" %(x,y)
                 sensor_status["Sensor size"]=sensor.cam.get_sensor_size()
-                mw= sensor.cam.get_integer_feature("WidthMax")
-                mh = sensor.cam.get_integer_feature("HeightMax") 
                 sensor_status["Max size"]= "(%s,%s)" %(mw,mh)
-                #sensor_status["Exposure"]=sensor.cam.get_exposure_time()
-                sensor_status["Exposure"]=sensor.cam.get_integer_feature("ExposureTimeAbs")
+                if sensor.cam.use_exposure_time:
+                    sensor_status["Exposure"]=sensor.cam.get_exposure_time()
+                else:
+                    sensor_status["Exposure"]=sensor.cam.get_integer_feature("ExposureTimeAbs")
                 sensor_status["Gain"]=sensor.cam.get_gain()
                 sensor_status["Frame rate"]=sensor.cam.get_frame_rate()
                 sensor_status["Payload"]=sensor.cam.get_payload()
@@ -197,7 +197,20 @@ class JAI_AD80GE(PoweredTask):
         if not isinstance(self._powerctlr, Relay):
             self.logger.error("Plugin %s is not available" %relay_name)          
   
-        
+    def device_reset(self):
+        try:
+            if not self._started:   
+                self.start()     
+            for sensor in self._sensors.itervalues():
+                sensor.cam.set_integer_feature("DeviceReset", 1)
+        except Exception as e:
+            try: 
+                self.stop()
+            except:
+                pass
+            self.logger.error( str(e))
+            self.logger.error( traceback.format_exc())
+            
     def get_configure_properties(self):
         return [
             ('sensors',"Sensor List" ,"List with {name=sensorname, mac=###}"),
@@ -205,6 +218,7 @@ class JAI_AD80GE(PoweredTask):
             ('relay_delay', "Delay (Sec)", "Number of seconds to wait after enabling Relay."), 
             ('relay_port',"Port Number", "Port on Relay to toggle for control.")
         ]
+        
     def get_run_properties(self):    
         '''
                     date_pattern (opt) : passed as strftime format
@@ -248,6 +262,10 @@ class JAI_AD80GE(PoweredTask):
             for sens in self._sensors.itervalues():
                 self.logger.debug("Getting Handle for Sensor: %s" %sens.name)
                 sens.cam = self._ar.get_camera(sens.mac) 
+                if sens.cam.get_float_feature("ExposureTime") > 0:
+                    sens.cam.use_exposure_time = True
+                else:
+                    sens.cam.use_exposure_time = False
             self.logger.info("JAI_AD80GE started")
             self._started = True       
             
@@ -310,12 +328,14 @@ class JAI_AD80GE(PoweredTask):
     def configure_shot(self, **kwargs):
         if self._started:
             for sensor in self._sensors.itervalues():
-                #sensor.cam.set_string_feature("ShutterMode", "ExposureTimeAbs")
-                sensor.cam.set_integer_feature("ExposureTimeAbs",kwargs.get("exposure_time", 33342))
-                sensor.cam.set_integer_feature("GainRaw", kwargs.get("gain", 0))
-               # max_width,max_height  = sensor.cam.get_sensor_size()
-                max_width = sensor.cam.get_integer_feature("WidthMax")
-                max_height = sensor.cam.get_integer_feature("HeightMax")   
+                if sensor.cam.use_exposure_time:
+                    sensor.cam.set_exposure_time(float(kwargs.get("exposure_time", 33342)))
+                else:
+                    sensor.cam.set_integer_feature("ExposureTimeAbs", int(kwargs.get("exposure_time", 33342)))
+                sensor.cam.set_integer_feature("GainRaw",int(kwargs.get("gain", 0)))
+                #max_width,max_height  = sensor.cam.get_sensor_size()
+                max_width=sensor.cam.get_integer_feature("WidthMax")
+                max_height=sensor.cam.get_integer_feature("HeightMax")
                 #Set ROI
                 sensor.cam.set_region(kwargs.get("offset_x", 0),
                                       kwargs.get("offset_y", 0),                                      
@@ -372,16 +392,21 @@ class JAI_AD80GE(PoweredTask):
                     self.logger.error("Plugin %s is not a Relay Object" %relay_name)   
             except:
                 self.logger.error("Plugin %s is not available" %relay_name)
+        else:
+            self._powerctlr = None
                     
     def _capture_frame(self, sensor):
         frame = None
         if sensor is not None:
             sensor.cam.start_acquisition_continuous() 
-            #sensor.cam.start_acquisition_trigger()
-            #sensor.cam.trigger()  
-            exp = sensor.cam.get_integer_feature("ExposureTimeAbs")
-            gain = sensor.cam.get_integer_feature("GainRaw");
-            self.logger.debug("Jai ExposureTimeAbs: %d, GainRaw: %d " % (exp,gain) )
+            exp=None
+            if sensor.cam.use_exposure_time:
+                exp = sensor.cam.get_exposure_time()
+            else:
+                exp = sensor.cam.get_integer_feature("ExposureTimeAbs")
+                
+            gain = sensor.cam.get_gain();
+            self.logger.debug("Jai ExposureTime: %d, GainRaw: %d " % (exp,gain) )
             sensor.cam.get_frame()
             time.sleep(.100)
             frame = sensor.cam.get_frame()

@@ -302,10 +302,10 @@ class Device(object):
         size = c_size_t(1024)
         return self._ar.dll.arv_device_get_genicam_xml(self._dev, byref(size))
 
-    def get_feature(self):
+    def get_feature(self, name):
         #FIXME broken should return correct struct
         self._ar.dll.arv_device_get_feature.restype = c_char_p
-        return self._ar.dll.arv_device_get_feature(self._dev)
+        return self._ar.dll.arv_device_get_feature(self._dev, name)
 
     def get_string_feature(self, name):
         self._ar.dll.arv_device_get_string_feature_value.restype = c_char_p
