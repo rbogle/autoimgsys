@@ -329,10 +329,10 @@ class JAI_AD80GE(PoweredTask):
         if self._started:
             for sensor in self._sensors.itervalues():
                 if sensor.cam.use_exposure_time:
-                    sensor.cam.set_exposure_time(kwargs.get("exposure_time", 33342))
+                    sensor.cam.set_exposure_time(float(kwargs.get("exposure_time", 33342)))
                 else:
-                    sensor.cam.set_integer_feature("ExposureTimeAbs", kwargs.get("exposure_time", 33342))
-                sensor.cam.set_integer_feature("GainRaw", kwargs.get("gain", 0))
+                    sensor.cam.set_integer_feature("ExposureTimeAbs", int(kwargs.get("exposure_time", 33342)))
+                sensor.cam.set_integer_feature("GainRaw",int(kwargs.get("gain", 0)))
                 #max_width,max_height  = sensor.cam.get_sensor_size()
                 max_width=sensor.cam.get_integer_feature("WidthMax")
                 max_height=sensor.cam.get_integer_feature("HeightMax")
