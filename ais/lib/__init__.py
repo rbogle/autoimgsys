@@ -1,0 +1,1 @@
+from ais import __version__

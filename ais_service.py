@@ -14,6 +14,7 @@ from ais.lib.sqllog import SQLAlchemyHandler
 from ais.ui import config, flask, db
 from ais.ui.models import *
 from ais.ui.views import *
+from ais import __version__
 
 #standard deps
 import os, logging, logging.config
@@ -319,7 +320,7 @@ class AISApp(object):
         self.db.session.commit()
                            
     def __init__(self, plugin_location=flask.root_path+"/plugins"):
-      
+        
         #setup web ui based on Flask, Flask-Admin, Flask-SQLAlchemy
         self.flask = flask
         #pass aisapp instance back to flask for syncing

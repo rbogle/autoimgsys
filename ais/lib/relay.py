@@ -1,5 +1,6 @@
 from plugin import PluginObj
 
+
 class Relay(PluginObj):
     
     def set_port(self, port, state):

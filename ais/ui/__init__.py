@@ -1,7 +1,7 @@
 from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
 
-
+from ais import __version__
 import config 
 
 flask = Flask('ais')

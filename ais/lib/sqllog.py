@@ -7,6 +7,7 @@ import traceback
 from ais.ui import db
 from ais.ui.models import Log
 
+
 class SQLAlchemyHandler(logging.Handler):
     # A very basic logger that commits a LogRecord to the SQL Db
     def emit(self, record):
