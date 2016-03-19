@@ -1,9 +1,9 @@
 {% extends "admin/master.html" %}
 {% import 'admin/lib.html' as lib with context %}
+{% import 'admin/form_lib.html' as flib with context %}
 
-{% macro extra() %}
-  <input name="_continue_editing" type="submit" class="btn" value="{{ _gettext('Save and Continue') }}" />
-{% endmacro %}
+
+
 
 {% block head %}
     {{ super() }}
@@ -15,6 +15,7 @@
   <li class="active"><a href="#main" role="tab" data-toggle="tab">Camera Status</a></li>
   <li><a href="#init" role="tab" data-toggle="tab">Edit Camera Settings</a></li>
   <li><a href="#run" role="tab" data-toggle="tab">Create Run Settings</a></li>
+  <li><a href="#cap" role="tab" data-toggle="tab">Image Capture</a></li>
 </ul>
 
 <!-- status Modal -->
@@ -40,7 +41,7 @@
 
 <!-- Test Modal -->
 <div class="modal fade" id="test-modal" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog" style="width: 75%">
+  <div class="modal-dialog" style="width: 90%">
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
@@ -90,7 +91,7 @@
         <h4/> PhenoCam Initalizaton Settings </h4>
             {% call lib.form_tag(init_form) %}
                 {{ lib.render_form_fields(init_form, form_opts=form_opts) }}
-                {{ lib.render_form_buttons(return_url, extra()) }}
+                {{ lib.render_form_buttons(return_url,flib.extra()) }}
             {% endcall %}
     </div>
     
@@ -101,10 +102,40 @@
             {% endcall %}
             {% call lib.form_tag(run_form) %}
                 {{ lib.render_form_fields(run_form, form_opts=form_opts) }}
-                {{ lib.render_form_buttons(return_url, extra()) }}
+                {{ lib.render_form_buttons(return_url,flib.extra()) }}
             {% endcall %}
     </div>
 
+    <div class="tab-pane" id="cap">
+        <h4/> PhenoCam Capture Settings </h4>
+            {% call lib.form_tag(run_list) %}
+                {{ lib.render_form_fields(run_list, form_opts=list_opts) }}
+            {% endcall %}
+        {% call lib.form_tag(cap_form) %}
+        {{ flib.field_group(cap_form.name) }}
+        <div class=row>
+            <div class="col-sm-3" id='menu'>
+                <div id="accordion-ctl">            
+                <button type="button" class="btn btn-default btn-sm btn-block" data-toggle="collapse" data-parent="#accordion" data-target="#file-settings">File Settings</button>
+                <button type="button" class="btn btn-default btn-sm btn-block" data-toggle="collapse" data-parent="#accordion" data-target="#rgb-settings">RGB Settings</button>
+                <button type="button" class="btn btn-default btn-sm btn-block" data-toggle="collapse" data-parent="#accordion" data-target="#nir-settings">NIR Settings</button>
+                <button type="button" class="btn btn-default btn-sm btn-block" data-toggle="collapse" data-parent="#accordion" data-target="#exp-settings">Exposure Settings</button>        
+                </div>                 
+
+            </div>
+          
+            <div class="col-sm-9" id="accordion">
+                <div class="panel">
+                    <div class="collapse in" id="file-settings"><div class="well"><h5>File Settings</h5>{{ flib.do_form_fields(cap_form.file_settings, form_opts=form_opts) }}</div></div>
+                    <div class="collapse" id="rgb-settings"><div class="well"><h5> RGB Sensor Settings</h5>{{ flib.do_form_fields(cap_form.rgb_settings, form_opts=form_opts) }}</div></div>
+                    <div class="collapse" id="nir-settings"><div class="well"><h> NIR Sensor Settings</h5>{{ flib.do_form_fields(cap_form.nir_settings, form_opts=form_opts) }}</div></div>
+                    <div class="collapse" id="exp-settings"><div class="well"><h5>Exposure Settings</h5>{{ flib.do_form_fields(cap_form.shot_settings, form_opts=form_opts) }}</div></div>
+                </div>            
+            </div>
+
+        </div>
+        {% endcall %}
+    </div>
 </div>
 {% endblock %}
 

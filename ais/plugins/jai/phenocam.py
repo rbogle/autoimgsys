@@ -1,6 +1,6 @@
 import ais.plugins.jai.jai as jai #inhertiance path due to Yapsy detection rules
 from ais.ui.models import Config, Plugin, Log
-from wtforms import Form,StringField,HiddenField,TextAreaField, BooleanField,IntegerField,validators
+from wtforms import Form,StringField,HiddenField,TextAreaField, BooleanField,IntegerField, SelectField, FieldList, FormField, validators
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from flask.ext.admin import expose
 import ast,time
@@ -28,6 +28,33 @@ class InitArgsForm(Form):
     relay_port = IntegerField("Relay Port")
     relay_delay = IntegerField("Seconds to Delay")
  
+class FileParamsForm(Form):
+    id = HiddenField()
+    sub_dir = StringField("Dir", default='', description="Directory Name to Store Images under /Data/PhenoCam. Default is none.")
+    date_dir = SelectField("Grouping", description="How to group images in subfolders",choices=[('none','None'),('year','Yearly'),('month','Monthly'),('day','Daily'),('hour','Hourly')])
+    date_dir_nested = BooleanField("Sort", default=False, description="Break out above grouping of images into nested subdirectories by date units")
+    file_prefix = StringField("Prefix", default="JAI", description="Prepend text to filename for each image")
+    image_type = SelectField("Type", choices=[('jpg', 'JPG'), ('tif', 'TIFF')], description="Write images as file format")
+    
+class SensorParamsForm(Form):
+    id = HiddenField()
+    # thee choices need to be set at runtime!!!
+    pixel_format = SelectField('Bits', description="Bit Depth for Image Capture")
+    ob_mode = BooleanField("Mode", description="Use Optical Black Mode", default=False)
+
+class ShotParamsForm(Form):
+    id = HiddenField()
+    exposure = StringField("Exposure", description="Comma separated list of exposure values ranging from 0-33342 uS", default="15000")
+    gain = StringField("Gain", default="0",description="Comma separated list of gain values from -89 to 593, single value applies to all")  
+
+class CaptureParamsForm(Form):
+    id = HiddenField()
+    name = StringField("Config Name", description="Name for this capture configuration")
+    file_settings = FormField(FileParamsForm)
+    rgb_settings = FormField(SensorParamsForm)
+    nir_settings = FormField(SensorParamsForm)
+    shot_settings = FormField(ShotParamsForm)
+    
 class TestParamsForm(Form):
     id = HiddenField()
     exposure = IntegerField("Exposure 20-33333 uS", default=15000, validators=[validators.NumberRange(min=20, max=33333)])
@@ -140,7 +167,34 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         else:
             flash("You must submit name and args", "error")
             return 'run'
-    
+  
+    # This will populate the cap_form with a config if given   
+    def update_cap_form(self, cfg_id=None):
+        
+        cap_form = CaptureParamsForm(id="cap_form")
+        cap_form.rgb_settings.pixel_format.choices = [('BayerRG8','8-Bit'), ('BayerRG12','12-Bit')]
+        cap_form.nir_settings.pixel_format.choices = [('Mono8','8-Bit'), ('Mono12','12-Bit')]        
+        if cfg_id is not None:
+            cfg = Config.query.get(cfg_id)
+            icfg = cfg.args
+            cap_form.name.data = cfg.name
+            # file_setting_form            
+            cap_form.file_settings.sub_dir.data = icfg.get("sub_dir", "")
+            cap_form.file_settings.date_dir.data = icfg.get("date_dir", "day")
+            cap_form.file_settings.date_dir_nested.data = icfg.get("date_dir_nested", False)
+            cap_form.file_settings.image_type.data = icfg.get("image_format", "tif")
+            cap_form.file_settings.file_prefix.data = icfg.get("file_prefix", "jai")            
+            # rgb_settings
+            rgb_conf = icfg.get("rgb",{})
+            cap_form.rgb_settings.pixel_format.data = rgb_conf.get("pixel_format", "BayerRG8")
+            cap_form.rgb_settings.ob_mode.data = rgb_conf.get("ob_mode", False)
+            # nir_settings
+            nir_conf = icfg.get("nir",{})
+            cap_form.nir_settings.pixel_format.data = nir_conf.get("pixel_format", "Mono8")
+            cap_form.nir_settings.ob_mode.data = nir_conf.get("ob_mode", False)
+            # shot_settings
+        return cap_form            
+            
     def update_run_form(self, cfg_id=None):
         #display list or form
         if cfg_id is not None:
@@ -160,6 +214,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             return ""
         if form is None:
             form = TestParamsForm(id='test')
+
         else: 
             form = TestParamsForm(form)
             if form.validate():
@@ -289,7 +344,8 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         )
         return [cfg]
        
-      
+    # Dont seem to be able to add other endpoints 
+    # so we have to handle it all here
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):
         
@@ -334,6 +390,8 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                     
         #load init form           
         init_form = self.update_init_form()                
+
+
         
         #runconfiglistform lets us load saved configs for editing
         #not ajax just reload
@@ -353,6 +411,8 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         }
         #now load run form with selected config or nothing.
         run_form = self.update_run_form(run_cfg)   
+        #load /update cap form 
+        cap_form = self.update_cap_form(run_cfg) 
         
         status={}     
         status['ok'] = self.initalized
@@ -364,6 +424,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         return self.render(
             self.view_template, status=status,
             init_form = init_form, 
+            cap_form = cap_form,
             active_tab = active_tab,
             return_url = "/phenocam/",
             run_list=run_list,

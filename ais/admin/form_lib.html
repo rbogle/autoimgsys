@@ -1,0 +1,37 @@
+{% macro extra() %}
+  <input name="_continue_editing" type="submit" class="btn" value="{{ _gettext('Save and Continue') }}" />
+{% endmacro %}
+
+{% macro field_group(field, kwargs={}) %}
+<div class="form-group">
+    <label for="{{ field.id }}" class="col-sm-2 control-label">{{ field.label.text }}</label>
+      {% if field.widget.input_type!='checkbox'%}
+        <div class="col-sm-8">
+      {% else %}
+        <div class="col-sm-1">
+      {% endif %}
+      {% set _dummy = kwargs.setdefault('class', 'form-control') %}
+      {{ field(**kwargs)|safe }}
+        </div>
+    {% if field.description %}
+    <span class="help-block col-sm-8 col-sm-offset-2">{{ field.description }}</span>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro do_form_fields(form, form_opts={}) %}
+<form class="form-horizontal">
+    {% for f in form if f.widget.input_type == 'hidden' %}
+        {{ f }}
+    {% endfor %}
+
+    {% for f in form if f.widget.input_type != 'hidden' %}
+      {% if form_opts %}
+        {% set kwargs = form_opts.get(f.name, {}) %}
+      {% else %}
+        {% set kwargs = {} %}
+      {% endif %}
+      {{field_group(f, kwargs) }}
+    {% endfor %}
+ </form>   
+{% endmacro%}
