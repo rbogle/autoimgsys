@@ -13,9 +13,8 @@
 {%block body%}
 <ul class="nav nav-tabs" role="tablist" id="myTab">
   <li class="active"><a href="#main" role="tab" data-toggle="tab">Camera Status</a></li>
-  <li><a href="#init" role="tab" data-toggle="tab">Edit Camera Settings</a></li>
-  <li><a href="#run" role="tab" data-toggle="tab">Create Run Settings</a></li>
-  <li><a href="#cap" role="tab" data-toggle="tab">Image Capture</a></li>
+  <li><a href="#init" role="tab" data-toggle="tab">Edit Camera Settings</a></li> 
+  <li><a href="#cap" role="tab" data-toggle="tab">Edit Capture Settings</a></li>
 </ul>
 
 <!-- status Modal -->
@@ -52,6 +51,8 @@
     </div>
   </div>
 </div>
+
+<!-- Tab Contents -->
 
 <div class="tab-content">
 
@@ -94,47 +95,43 @@
                 {{ lib.render_form_buttons(return_url,flib.extra()) }}
             {% endcall %}
     </div>
-    
-    <div class="tab-pane" id="run">
-        <h4> Create PhenoCam Run Settings </h4>
-            {% call lib.form_tag(run_list) %}
-                {{ lib.render_form_fields(run_list, form_opts=list_opts) }}
-            {% endcall %}
-            {% call lib.form_tag(run_form) %}
-                {{ lib.render_form_fields(run_form, form_opts=form_opts) }}
-                {{ lib.render_form_buttons(return_url,flib.extra()) }}
-            {% endcall %}
-    </div>
-
     <div class="tab-pane" id="cap">
-        <h4/> PhenoCam Capture Settings </h4>
+        <h4> PhenoCam Capture Settings </h4>
             {% call lib.form_tag(run_list) %}
-                {{ lib.render_form_fields(run_list, form_opts=list_opts) }}
+                {{ lib.render_form_fields(cap_list, form_opts=cap_opts) }}
             {% endcall %}
-        {% call lib.form_tag(cap_form) %}
-        {{ flib.field_group(cap_form.name) }}
-        <div class=row>
-            <div class="col-sm-3" id='menu'>
-                <div id="accordion-ctl">            
-                <button type="button" class="btn btn-default btn-sm btn-block" data-toggle="collapse" data-parent="#accordion" data-target="#file-settings">File Settings</button>
-                <button type="button" class="btn btn-default btn-sm btn-block" data-toggle="collapse" data-parent="#accordion" data-target="#rgb-settings">RGB Settings</button>
-                <button type="button" class="btn btn-default btn-sm btn-block" data-toggle="collapse" data-parent="#accordion" data-target="#nir-settings">NIR Settings</button>
-                <button type="button" class="btn btn-default btn-sm btn-block" data-toggle="collapse" data-parent="#accordion" data-target="#exp-settings">Exposure Settings</button>        
-                </div>                 
-
+        <form method="POST" role="form" class="form-horizontal" enctype="multipart/form-data" id="cap_form">
+            <input id='id' name='id' value='cap' type='hidden'>
+            <div id='set-name'>{{ flib.field_group(cap_form.name) }}</div>
+            <div class=row>
+                <div class="col-sm-3" id='menu'>
+                    <div id="accordion-ctl">            
+                    <button type="button" class="btn btn-default btn-sm btn-block" data-toggle="collapse" data-parent="#accordion" data-target="#file-settings">File Settings</button>
+                    <button type="button" class="btn btn-default btn-sm btn-block" data-toggle="collapse" data-parent="#accordion" data-target="#rgb-settings">RGB Settings</button>
+                    <button type="button" class="btn btn-default btn-sm btn-block" data-toggle="collapse" data-parent="#accordion" data-target="#nir-settings">NIR Settings</button>
+                    <button type="button" class="btn btn-default btn-sm btn-block" data-toggle="collapse" data-parent="#accordion" data-target="#exp-settings">Exposure Settings</button>        
+                    </div>                 
+                    <div id="submit-ctl" style="margin-top:40px;">
+                        <div class="form-group">
+                          <div class="col-md-offset-2 col-md-8 submit-row">
+                             <input name="submit" type="submit" class="btn btn-info btn-block" value="{{ _gettext('Save and Continue') }}">
+                             <input name="submit" type="submit" class="btn btn-primary btn-block" value="{{ _gettext('Submit') }}">
+                             <input name="submit" type="submit" class="btn btn-danger btn-block" value="{{ _gettext('Delete') }}">                             
+                             <a href="{{ cancel_url }}" class="btn btn-warning btn-block" role="button">{{ _gettext('Cancel') }}</a>
+                          </div>
+                        </div>
+                    </div>    
+                </div>        
+                <div class="col-sm-9" id="accordion">
+                    <div class="panel">
+                        <div class="collapse{{' in' if cap_panel=='file' }}" id="file-settings"><div class="well"><h5>File Settings</h5>{{ flib.do_form_fields(cap_form.file_settings, form_opts=form_opts) }}</div></div>
+                        <div class="collapse" id="rgb-settings"><div class="well"><h5> RGB Sensor Settings</h5>{{ flib.do_form_fields(cap_form.rgb_settings, form_opts=form_opts) }}</div></div>
+                        <div class="collapse" id="nir-settings"><div class="well"><h> NIR Sensor Settings</h5>{{ flib.do_form_fields(cap_form.nir_settings, form_opts=form_opts) }}</div></div>
+                        <div class="collapse{{' in' if cap_panel=='shot' }}" id="exp-settings"><div class="well"><h5>Exposure Settings</h5>{{ flib.do_form_fields(cap_form.shot_settings, form_opts=form_opts) }}</div></div>
+                    </div>            
+                </div>
             </div>
-          
-            <div class="col-sm-9" id="accordion">
-                <div class="panel">
-                    <div class="collapse in" id="file-settings"><div class="well"><h5>File Settings</h5>{{ flib.do_form_fields(cap_form.file_settings, form_opts=form_opts) }}</div></div>
-                    <div class="collapse" id="rgb-settings"><div class="well"><h5> RGB Sensor Settings</h5>{{ flib.do_form_fields(cap_form.rgb_settings, form_opts=form_opts) }}</div></div>
-                    <div class="collapse" id="nir-settings"><div class="well"><h> NIR Sensor Settings</h5>{{ flib.do_form_fields(cap_form.nir_settings, form_opts=form_opts) }}</div></div>
-                    <div class="collapse" id="exp-settings"><div class="well"><h5>Exposure Settings</h5>{{ flib.do_form_fields(cap_form.shot_settings, form_opts=form_opts) }}</div></div>
-                </div>            
-            </div>
-
-        </div>
-        {% endcall %}
+        </form>
     </div>
 </div>
 {% endblock %}
