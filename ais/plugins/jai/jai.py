@@ -59,6 +59,7 @@ class JAI_AD80GE(PoweredTask):
            #we need to start camerasys as this is task callback
             if not self._started:   
                 self.start()
+            self.logger.debug("Shot config is:\n %s" % pprint.pformat(kwargs, indent=4))
             persist = kwargs.get("persist", False)
             datepattern = kwargs.get("date_pattern", "%Y-%m-%dT%H%M%S" ) 
             split = kwargs.get("date_dir",'Daily')
