@@ -73,7 +73,8 @@ class JAI_AD80GE(PoweredTask):
             for sname, sc in sensor_confs.iteritems():
                 def_fmts = {'rgb': 'BayerRG8', 'nir': 'Mono8'}
                 if sname in def_fmts.keys():
-                    self._sensors[sname].cam.set_pixel_format_as_string(sc.get("pixel_format", def_fmts.get(sname)))   
+                    def_fmt = def_fmts.get(sname)
+                    self._sensors[sname].cam.set_pixel_format_as_string(sc.get("pixel_format", def_fmt))   
                     ob_mode = sc.get('ob_mode', False)
                     if ob_mode:
                         self._sensors[sname].cam.write_register(0xa41c,1)

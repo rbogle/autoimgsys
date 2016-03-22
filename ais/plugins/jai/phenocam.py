@@ -273,8 +273,8 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                 kwargs = {'sub_dir':'test', 'date_dir': None, 'date_pattern': None}
                 kwargs['file_prefix']="PhenoCam_Test"
                 kwargs['image_type'] = 'jpg'
-                kwargs['rgb']= {'pixel_format': 'BayerRG8', 'sensor': 'rgb', 'ob_mode': form.obmode.data}, 
-                kwargs['nir']= {'pixel_format': 'Mono8', 'sensor': 'nir', 'ob_mode': form.obmode.data} 
+                kwargs['rgb']= {'pixel_format': 'BayerRG8', 'ob_mode': form.obmode.data}
+                kwargs['nir']= {'pixel_format': 'Mono8', 'ob_mode': form.obmode.data} 
                 kwargs['sequence']={ 'exposure_time': int(form.exposure.data), 'gain': int(form.gain.data)}
                 kwargs['persist']=True
                 try:
