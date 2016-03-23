@@ -24,11 +24,11 @@ class InitArgsForm(Form):
  
 class FileParamsForm(Form):
     id = HiddenField()
-    sub_dir = StringField("Dir", description="Directory Name to Store Images under /Data/PhenoCam. Default is none.", filters=[lambda x: x or None])
-    date_dir = SelectField("Grouping", description="How to group images in subfolders",choices=[('None','None'),('Yearly','Yearly'),('Yearly','Monthly'),('Daily','Daily'),('Hourly','Hourly')])
+    sub_dir = StringField("Dir", description="Directory Name to Store Images under /Data/PhenoCam. Default is none.", filters=[lambda x: x or None], default="")
+    date_dir = SelectField("Grouping", description="How to group images in subfolders",choices=[('None','None'),('Yearly','Yearly'),('Yearly','Monthly'),('Daily','Daily'),('Hourly','Hourly')], default="Daily")
     date_dir_nested = BooleanField("Sort", default=False, description="Break out above grouping of images into nested subdirectories by date units")
-    file_prefix = StringField("Prefix", description="Prepend text to filename for each image", filters=[lambda x: x or None])
-    image_type = SelectField("Type", choices=[('jpg', 'JPG'), ('tif', 'TIFF')], description="Write images as file format")
+    file_prefix = StringField("Prefix", description="Prepend text to filename for each image", filters=[lambda x: x or None], default="jai")
+    image_type = SelectField("Type", choices=[('jpg', 'JPG'), ('tif', 'TIFF')], description="Write images as file format", default='jpg')
     
 class RGBParamsForm(Form):
     id = HiddenField()
@@ -149,7 +149,8 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         action = data.get("submit")
         active_tab='main'
         cap_panel='file'
-        if action =="Delete":
+        exfname=self.get_file_name()
+        if action is None:
             plg = Plugin.query.filter_by(name = self.name).first()            
             icfg = Config.query.filter_by(plugin_id=plg.id, role="Runtime", name=data.get("name")).first()
             try:
@@ -172,8 +173,9 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                 icfg.args['sub_dir']=form.file_settings.sub_dir.data
                 icfg.args['date_dir']=form.file_settings.date_dir.data
                 icfg.args['date_dir_nested']=form.file_settings.date_dir_nested.data
-                icfg.args['image_format'] =form.file_settings.image_type.data
+                icfg.args['image_type'] =form.file_settings.image_type.data
                 icfg.args['file_prefix']=form.file_settings.file_prefix.data
+                exfname = self.get_file_name(**icfg.args)
                 icfg.args['rgb']={'pixel_format':form.rgb_settings.pixel_format.data,'ob_mode': form.rgb_settings.ob_mode.data }
                 icfg.args['nir']={'pixel_format':form.nir_settings.pixel_format.data,'ob_mode': form.nir_settings.ob_mode.data }
                 exp_vals = [ s.strip() for s in form.shot_settings.exposure.data.splitlines()]
@@ -214,13 +216,13 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                 flash(errmsg, "error")
                 active_tab = 'cap'
 
-        return (active_tab,cap_panel,form)
+        return (exfname,active_tab,cap_panel,form)
         
         
  # This will populate the cap_form with a config if given   
-    def update_cap_form(self, cfg_id=None):
-        
-        cap_form = CaptureParamsForm(id="cap")   
+    def update_cap_form(self, cfg_id=None):      
+        cap_form = CaptureParamsForm(id="cap")
+        exfname=self.get_file_name()
         if cfg_id is not None:
             cfg = Config.query.get(cfg_id)
             icfg = cfg.args
@@ -229,7 +231,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             cap_form.file_settings.sub_dir.data = icfg.get("sub_dir", "")
             cap_form.file_settings.date_dir.data = icfg.get("date_dir", "Daily")
             cap_form.file_settings.date_dir_nested.data = icfg.get("date_dir_nested", False)
-            cap_form.file_settings.image_type.data = icfg.get("image_format", "tif")
+            cap_form.file_settings.image_type.data = icfg.get("image_type", "jpg")
             cap_form.file_settings.file_prefix.data = icfg.get("file_prefix", "jai")            
             # rgb_settings
             rgb_conf = icfg.get("rgb",{})
@@ -253,9 +255,26 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                     gain.append('0')
                 cap_form.shot_settings.exposure.data = "\n".join(exp)
                 cap_form.shot_settings.gain.data = '\n'.join(gain)
-            
-        return cap_form            
-            
+            exfname = self.get_file_name(**icfg)
+        return exfname, cap_form            
+ 
+    def get_file_name(self, **kwargs):
+        fp = kwargs.get('file_prefix', 'jai')
+        sd = kwargs.get("sub_dir", None)
+        if sd == "":
+            sd=None
+        dd = kwargs.get("date_dir", "Daily")
+        nt = kwargs.get("date_dir_nested", False)
+        if nt == 'true':
+            nt = True
+        else:
+            nt = False            
+        it = kwargs.get("image_type", "jpg")
+        
+        rval = self._gen_filename(prefix=fp, subdir=sd, split=dd, nest=nt)
+        rval += ".%s" %it
+        return rval
+           
     def do_test(self, form=None, mode=None):
         from flask import Markup
         if mode=="stop": #we closed test dialog so power down.
@@ -397,7 +416,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
     def plugin_view(self):
         
         from flask.ext.admin import helpers as h
-        from flask import flash,request
+        from flask import flash,request,jsonify
         
         if not self.initalized:
             flash("PhenoCam has not been properly initalized! See Settings Tab", 'error' )
@@ -419,6 +438,9 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                 return self.do_status()
             if action == "logs":
                 return self.get_logs(request.args)
+            if action == "filename":
+                cfg = request.args.to_dict()
+                return jsonify(fname=self.get_file_name(**cfg))
         #check for form submit
         if h.is_form_submitted():
             form_data = request.form
@@ -428,7 +450,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                 active_tab = self.update_init_model(request.form)     
             # cap config added or editied
             elif form_type == 'cap':
-                active_tab,cap_panel,cap_form = self.update_cap_model(form_data)
+                exfname,active_tab,cap_panel,cap_form = self.update_cap_model(form_data)
              # config selected from list, so load it up.    
             elif form_type == 'cap_list':
                 active_tab = 'cap'
@@ -467,7 +489,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
        # run_form = self.update_run_form(run_cfg)   
         #load /update cap form 
         if cap_form is None:
-            cap_form = self.update_cap_form(cap_cfg) 
+            exfname, cap_form = self.update_cap_form(cap_cfg) 
         
         status={}     
         status['ok'] = self.initalized
@@ -484,6 +506,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             return_url = "/phenocam/",
             cap_list=cap_list,
             cap_opts=cap_opts,
+            exfname = exfname,
             cap_panel=cap_panel,
             delay=d
             )
