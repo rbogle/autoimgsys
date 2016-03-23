@@ -197,7 +197,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                     flash("Shot Config  submission failed", "error")
                     active_tab='cap'
                 else: 
-                    if action=="Submit":
+                    if action=="Save":
                         #good submit return to main tab
                         flash("Shot Config %s submitted" % data.get("name"), "message")
                         active_tab = 'main'

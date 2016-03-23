@@ -2,9 +2,6 @@
 {% import 'admin/lib.html' as lib with context %}
 {% import 'admin/form_lib.html' as flib with context %}
 
-
-
-
 {% block head %}
     {{ super() }}
     {{ lib.form_css() }}
@@ -13,8 +10,8 @@
 {%block body%}
 <ul class="nav nav-tabs" role="tablist" id="myTab">
   <li class="active"><a href="#main" role="tab" data-toggle="tab">Camera Status</a></li>
-  <li><a href="#init" role="tab" data-toggle="tab">Edit Camera Settings</a></li> 
-  <li><a href="#cap" role="tab" data-toggle="tab">Edit Capture Settings</a></li>
+  <li><a href="#init" role="tab" data-toggle="tab">Edit Device Settings</a></li> 
+  <li><a href="#cap" role="tab" data-toggle="tab">Image Capture and Settings</a></li>
 </ul>
 
 <!-- status Modal -->
@@ -29,7 +26,7 @@
         <div id="cam-status" style="display: none;">
             <h4>Waiting for Camera Startup -- aprox. {{delay}} seconds</h4>
             <div class="progress progress-striped active">
-                <div id="pgbar" class="progress-bar" role="progressbar"  aria-valuemin="0" aria-valuemax="100"></div>
+                <div id="status-pgbar" class="progress-bar" role="progressbar"  aria-valuemin="0" aria-valuemax="100"></div>
             </div>
         </div>
         <div id="status_report"></div>
@@ -52,10 +49,37 @@
   </div>
 </div>
 
+<!-- Capture Modal -->
+<div class="modal fade" id="capture-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" >
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="myModalLabel">PhenoCam Capture</h4>
+            </div>
+            <div class="modal-body text-center" id="capture-modal-body">
+                <div id="capture-status" style="display: none;">
+                    <h4>Waiting for Camera Startup -- aprox. {{delay}} seconds</h4>
+                    <div class="progress progress-striped active">
+                        <div id="capture-pgbar" class="progress-bar" role="progressbar"  aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                <div id="capture-info" style="display: none;">
+                    <div id="capture-info-content"">&nbsp</div>
+                </div> 
+            </div> 
+            <div id="capture-modal-footer" class="modal-footer" style="display: none;">
+                <div class="col-md-offset-2 col-md-10 submit-row text-right">
+                <a class="btn btn-danger" role="button" data-dismiss="modal" data-target="#-modal">Close</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- Tab Contents -->
 
 <div class="tab-content">
-
+<!-- Main  Settings Tab -->
     <div class="tab-pane active" id="main">
         <div id="server_ctl" class="panel
     			{% if status['ok']  %}
@@ -87,7 +111,7 @@
           </div>
         </div>
     </div>
-    
+ <!-- Edit Init Settings Tab -->   
     <div class="tab-pane" id="init">
         <h4/> PhenoCam Initalizaton Settings </h4>
             {% call lib.form_tag(init_form) %}
@@ -95,6 +119,7 @@
                 {{ lib.render_form_buttons(return_url,flib.extra()) }}
             {% endcall %}
     </div>
+<!-- Edit Capture Settings Tab -->
     <div class="tab-pane" id="cap">
         <h4> PhenoCam Capture Settings </h4>
             {% call lib.form_tag(run_list) %}
@@ -114,14 +139,21 @@
                     <div id="submit-ctl" style="margin-top:40px;">
                         <div class="form-group">
                           <div class="col-md-offset-2 col-md-8 submit-row">
-                             <input name="submit" type="submit" class="btn btn-info btn-block" value="{{ _gettext('Save and Continue') }}">
-                             <input name="submit" type="submit" class="btn btn-primary btn-block" value="{{ _gettext('Submit') }}">
+                             <button name="sandc" type="submit" class="btn btn-info btn-block" value="{{ _gettext('Save and Continue') }}">{{ _gettext('Save and Continue') }}</button>
+                             <button name="save" type="submit" class="btn btn-primary btn-block" value="{{ _gettext('Save') }}"><span class="glyphicon glyphicon-save" style="color:white"></span> {{ _gettext('Save') }}</button>
                              <!--<input name="submit" type="submit" class="btn btn-danger btn-block" value="{{ _gettext('Delete') }}">-->
-                             <input name="delete"  type="submit" class="btn btn-danger btn-block" onclick="return confirm('Are you sure you want to delete this item');" value={{ _gettext('Delete') }}>                            
-                             <a href="{{ cancel_url }}" class="btn btn-warning btn-block" role="button">{{ _gettext('Cancel') }}</a>
+                             <button name="delete" type="submit" class="btn btn-danger btn-block" onclick="return confirm('Are you sure you want to delete this item');"><span class="glyphicon glyphicon-trash" style="color:white"></span> {{ _gettext('Delete') }}</button>                            
+                             <a href="{{ cancel_url }}" class="btn btn-warning btn-block" role="button"><span class="glyphicon glyphicon-remove-circle"></span> {{ _gettext('Cancel') }}</a>
                           </div>
                         </div>
-                    </div>    
+                    </div>  
+                    <div id="cap_ctl" style="margin-top:40px">
+                        <div class="form-group">                        
+                            <div class="col-md-offset-2 col-md-8 submit-row">
+                                <a class="btn btn-success btn-block" data-toggle="modal" data-target="#capture-modal" data-backdrop="static"><span class="glyphicon glyphicon-picture"></span> Capture</a>
+                            </div>
+                        </div>
+                    </div>  
                 </div>        
                 <div class="col-sm-9" id="accordion">
                     <div class="panel">
@@ -157,6 +189,7 @@
     var pow_delay = {{delay}}+10;
     var pgbar_timer = 0;
 
+    // watches for changes on file-settings form and update example filename
     $('#file-settings').change(function(){
         var mydata= {
             file_prefix: $('#file_settings-file_prefix').val(),
@@ -169,6 +202,31 @@
             $('#exfname').text(data.fname)
         });
     });
+
+    // capture modal dialog to monitor capture progress
+   $('#capture-modal').on('show.bs.modal', function(){
+           cfg=$('#config option:selected').val()
+           if(cfg=="__None"){
+                $('#capture-status').hide();
+                stop_prog_bar('#capture-status');
+                $('#capture-info-content').text("Please save or load a configuration");
+                $('#capture-info').show();
+                $('#capture-modal-footer').show();
+                return;
+           } else {
+               $('#capture-status').show();
+               start_prog_bar('#capture-status');
+           }
+    });
+
+    // capture modal dialog to monitor capture progress
+   $('#capture-modal').on('hide.bs.modal', function(){
+            stop_prog_bar('#capture-status')
+            $('#capture-info').hide();
+            $('#capture-modal-footer').hide();
+            $('#capture-status').hide();
+    });
+
 
    // on call to show test window load form and powerup camera
     $('#test-modal').on('show.bs.modal', function()
@@ -189,10 +247,10 @@
         {
             if (!status_modal_call){
                 status_modal_call = true;
-                start_prog_bar()
+                start_prog_bar("#cam-status")
                 $.get('/phenocam?action=status', function(data)
                     {
-                      stop_prog_bar()
+                      stop_prog_bar("#cam-status")
                       $('#status_report').html(data) ;
                       status_modal_call=false ;
                     }
@@ -205,7 +263,7 @@
     $('#status-modal').on('hide.bs.modal', function()
         {
             if(!status_modal_call){
-                stop_prog_bar();
+                stop_prog_bar("#cam-status");
                 $('#status_report').html("");
             }
         }
@@ -253,19 +311,19 @@
         );
     }
 
-    function start_prog_bar(){
-        $("#cam-status").show();
+    function start_prog_bar(node){
+        $(node).show();
         width = 0;
-        $("#pgbar").css("width", width+"%");
+        $(".progress-bar").css("width", width+"%");
         pgbar_timer = setInterval( function() {
             width++;
             if(width>=100) width=0;
-            $("#pgbar").css("width", width+"%");
+            $(".progress-bar").css("width", width+"%");
         }, pow_delay*10);
     }
 
-    function stop_prog_bar(){
-         $("#cam-status").hide();
+    function stop_prog_bar(node){
+         $(node).hide();
          clearInterval(pgbar_timer);
     }
 
