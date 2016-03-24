@@ -52,13 +52,6 @@ class CaptureParamsForm(Form):
     rgb_settings = FormField(RGBParamsForm)
     nir_settings = FormField(NIRParamsForm)
     shot_settings = FormField(ShotParamsForm)
-    
-class TestParamsForm(Form):
-    id = HiddenField()
-    exposure = IntegerField("Exposure 20-33333 uS", default=15000, validators=[validators.NumberRange(min=20, max=33333)])
-    gain = IntegerField("Gain -89 to 593", default=0, validators=[validators.NumberRange(min=-89, max=593)])    
-    obmode = BooleanField("OpticalBlack Mode", default=False)
-
 
 class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection rules
     
@@ -147,7 +140,6 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         from flask import flash
         form = CaptureParamsForm(data)
         action = data.get("submit")
-        active_tab='main'
         cap_panel='file'
         exfname=self.get_file_name()
         if action == "Delete":
@@ -158,11 +150,9 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                 self.app.db.session.commit()
             except: # bad delete return to cap
                 flash("Could not delete config %s" % data.get('name'), "error")
-                active_tab='cap'
             else: #good delete flash and return to main
                 flash("Config %s has been deleted" % data.get('name'), "message")
                 form=None
-                active_tab='main'
         else:
             if form.validate():
                 plg =Plugin.query.filter_by(name = self.name).first()            
@@ -195,17 +185,9 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                     self.app.db.session.commit()
                 except: # failed submit return to cap with form as is
                     flash("Shot Config  submission failed", "error")
-                    active_tab='cap'
                 else: 
-                    if action=="Save":
-                        #good submit return to main tab
-                        flash("Shot Config %s submitted" % data.get("name"), "message")
-                        active_tab = 'main'
-                        form=None
-                    else: # "Save and Continue
-                        #good submit return to cap tab
-                        flash("Shot Config %s updated" % data.get("name"), "message")
-                        active_tab = 'cap'
+                    flash("Shot Config %s updated" % data.get("name"), "message")
+
             else: # form didn't validate return with form for inspection
                 errmsg = "Check your config for errors:\n"
                 for n in form.errors.keys():
@@ -214,9 +196,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                     elif n=="shot_settings":
                         cap_panel = 'shot'
                 flash(errmsg, "error")
-                active_tab = 'cap'
-
-        return (exfname,active_tab,cap_panel,form)
+        return (exfname,cap_panel,form)
         
         
  # This will populate the cap_form with a config if given   
@@ -285,52 +265,6 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             rval['success']=False
             rval['error_msg']="No configuration requested"
         return rval
-        
-        
-    def do_test(self, form=None, mode=None):
-        from flask import Markup
-        if mode=="stop": #we closed test dialog so power down.
-            try:
-                self.stop()
-            except:
-                pass
-            return ""
-        if form is None:
-            form = TestParamsForm(id='test')
-
-        else: 
-            form = TestParamsForm(form)
-            if form.validate():
-                kwargs = {'sub_dir':'test', 'date_dir': None, 'date_pattern': None}
-                kwargs['file_prefix']="PhenoCam_Test"
-                kwargs['image_type'] = 'jpg'
-                kwargs['rgb']= {'pixel_format': 'BayerRG8', 'ob_mode': form.obmode.data}
-                kwargs['nir']= {'pixel_format': 'Mono8', 'ob_mode': form.obmode.data} 
-                kwargs['sequence']={ 'exposure_time': int(form.exposure.data), 'gain': int(form.gain.data)}
-                kwargs['persist']=True
-                try:
-                    self.run(**kwargs)
-                    ts = int(time.time())
-                    content = Markup("<img id='rgb' src='/fileadmin/download/PhenoCam/test/PhenoCam_Test_rgb.jpg?")
-                    content += Markup(str(ts))
-                    content += Markup("' /><br/>")
-                    content += Markup("<img id='nir' src='/fileadmin/download/PhenoCam/test/PhenoCam_Test_nir.jpg?")
-                    content += Markup(str(ts))
-                    content += Markup("' />")
-                except:
-                    content = Markup("Error")
-                return content
-            else:
-                content=Markup("<ul class=errors>")
-                for name,msgs in form.errors.iteritems():
-                    for msg in msgs:
-                        content+=Markup("<li>"+name+": ")
-                        content+=Markup(msg)
-                        content+=Markup("</li>")
-                content+= Markup("</ul>")
-                return content
-        d=self._powerdelay
-        return self.render(self.path+"/test.html", test_form = form, delay=d)
         
     def do_device_reset(self):
         from flask import flash,redirect
@@ -444,8 +378,6 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                 return self.do_device_reset()
             if action == "reinit":
                 return self.do_reinit()
-            if action == "test":
-                return self.do_test(mode=request.args.get('mode')) 
             if action == "status":
                 return self.do_status()
             if action == "logs":
@@ -464,7 +396,8 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                 active_tab = self.update_init_model(request.form)     
             # cap config added or editied
             elif form_type == 'cap':
-                exfname,active_tab,cap_panel,cap_form = self.update_cap_model(form_data)
+                exfname,cap_panel,cap_form = self.update_cap_model(form_data)
+                active_tab='cap'
              # config selected from list, so load it up.    
             elif form_type == 'cap_list':
                 active_tab = 'cap'
