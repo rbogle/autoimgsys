@@ -59,6 +59,10 @@ class JAI_AD80GE(PoweredTask):
            #we need to start camerasys as this is task callback
             if not self._started:   
                 self.start()
+                
+            self.last_run['images']=list()
+            self.last_run['config']=kwargs
+            
             self.logger.debug("Shot config is:\n %s" % pprint.pformat(kwargs, indent=4))
             persist = kwargs.get("persist", False)
             datepattern = kwargs.get("date_pattern", "%Y-%m-%dT%H%M%S" ) 
@@ -305,8 +309,9 @@ class JAI_AD80GE(PoweredTask):
                 #TODO test name for file extension first?
                 #TODO add metadata?
                 iname = name+ "_"+sens.name+"." + imgtype
-                self.logger.debug("Jai capturing and saving image as: %s"%iname)
+                self.logger.info("Jai capturing and saving image as: %s"%iname)
                 cv2.imwrite(iname, data)
+                self.last_run['images'].append(iname)
                
                 
     def configure_sensor(self,sensor, **kwargs ):

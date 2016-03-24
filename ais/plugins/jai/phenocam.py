@@ -150,7 +150,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         active_tab='main'
         cap_panel='file'
         exfname=self.get_file_name()
-        if action is None:
+        if action == "Delete":
             plg = Plugin.query.filter_by(name = self.name).first()            
             icfg = Config.query.filter_by(plugin_id=plg.id, role="Runtime", name=data.get("name")).first()
             try:
@@ -274,7 +274,19 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         rval = self._gen_filename(prefix=fp, subdir=sd, split=dd, nest=nt)
         rval += ".%s" %it
         return rval
-           
+    
+    def do_capture(self, cfg_id=None):
+        rval={}
+        if cfg_id is not None:
+            cfg = Config.query.get(cfg_id)
+            self.run(**cfg.args) 
+            rval=self.last_run
+        else:
+            rval['success']=False
+            rval['error_msg']="No configuration requested"
+        return rval
+        
+        
     def do_test(self, form=None, mode=None):
         from flask import Markup
         if mode=="stop": #we closed test dialog so power down.
@@ -438,6 +450,8 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                 return self.do_status()
             if action == "logs":
                 return self.get_logs(request.args)
+            if action =="capture":
+                return jsonify(**self.do_capture(request.args.get('cfg_id')))
             if action == "filename":
                 cfg = request.args.to_dict()
                 return jsonify(fname=self.get_file_name(**cfg))
