@@ -1,24 +1,18 @@
 import ais.plugins.jai.jai as jai #inhertiance path due to Yapsy detection rules
 from ais.ui.models import Config, Plugin, Log
-from wtforms import Form,StringField,HiddenField,TextAreaField, BooleanField,IntegerField,validators
+from wtforms import Form,StringField,HiddenField,TextAreaField, BooleanField,IntegerField, SelectField, FormField, validators
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from flask.ext.admin import expose
-import ast,time
+import time
 from collections import OrderedDict
 
 #logger = logging.getlogger("PhenoCam")
 
-class RunConfigListForm(Form):
+class CapConfigListForm(Form):
     id = HiddenField()
     config = QuerySelectField("Stored Configs:", allow_blank=True, blank_text="Create New", 
                           query_factory=lambda: Config.query.join(Plugin).filter(Plugin.name=="PhenoCam").filter(Config.role=="Runtime").all()                          
                           )    
-                          
-class RunArgsForm(Form):
-    id = HiddenField()
-    name = StringField("Config Name")
-    args = TextAreaField('Run Config')
-    
 class InitArgsForm(Form):
     id = HiddenField()
     rgb = StringField('RGB Sensor Mac Address')
@@ -28,12 +22,36 @@ class InitArgsForm(Form):
     relay_port = IntegerField("Relay Port")
     relay_delay = IntegerField("Seconds to Delay")
  
-class TestParamsForm(Form):
+class FileParamsForm(Form):
     id = HiddenField()
-    exposure = IntegerField("Exposure 20-33333 uS", default=15000, validators=[validators.NumberRange(min=20, max=33333)])
-    gain = IntegerField("Gain -89 to 593", default=0, validators=[validators.NumberRange(min=-89, max=593)])    
-    obmode = BooleanField("OpticalBlack Mode", default=False)
+    sub_dir = StringField("Dir", description="Directory Name to Store Images under /Data/PhenoCam. Default is none.", filters=[lambda x: x or None], default="")
+    date_dir = SelectField("Grouping", description="How to group images in subfolders",choices=[('None','None'),('Yearly','Yearly'),('Yearly','Monthly'),('Daily','Daily'),('Hourly','Hourly')], default="Daily")
+    date_dir_nested = BooleanField("Sort", default=False, description="Break out above grouping of images into nested subdirectories by date units")
+    file_prefix = StringField("Prefix", description="Prepend text to filename for each image", filters=[lambda x: x or None], default="jai")
+    image_type = SelectField("Type", choices=[('jpg', 'JPG'), ('tif', 'TIFF')], description="Write images as file format", default='jpg')
+    
+class RGBParamsForm(Form):
+    id = HiddenField()
+    pixel_format = SelectField('Bits', description="Bit Depth for Image Capture",choices = [('BayerRG8','8-Bit'), ('BayerRG10','10-Bit'),('BayerRG12','12-Bit')])
+    ob_mode = BooleanField("Mode", description="Use Optical Black Mode", default=False)
 
+class NIRParamsForm(Form):
+    id = HiddenField()
+    pixel_format = SelectField('Bits', description="Bit Depth for Image Capture",choices = [('Mono8','8-Bit'), ('Mono10','10-Bit'), ('Mono12','12-Bit')] )
+    ob_mode = BooleanField("Mode", description="Use Optical Black Mode", default=False)
+    
+class ShotParamsForm(Form):
+    id = HiddenField()
+    exposure = TextAreaField("Exposure", description="List of exposure values ranging from 0-33342 uS. one value per line", default="15000", validators=[validators.Regexp('\d*([\r\n]|$)',message="Only numbers on a single line")])
+    gain = TextAreaField("Gain", default="0",description="List of gain values from -89 to 593, one value per line, a single value applies to all exposures", validators=[validators.Regexp('\d*([\r\n]|$)',message="Only numbers on a single line")])  
+
+class CaptureParamsForm(Form):
+    id = HiddenField()
+    name = StringField("Config Name", description="Name for this capture configuration", validators=[validators.InputRequired()])
+    file_settings = FormField(FileParamsForm)
+    rgb_settings = FormField(RGBParamsForm)
+    nir_settings = FormField(NIRParamsForm)
+    shot_settings = FormField(ShotParamsForm)
 
 class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection rules
     
@@ -116,86 +134,137 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             form.use_relay = False
         return form
     
-    def update_run_model(self,form):
-        
-        from flask import flash
-        if form.get('name') != "":
-            plg =Plugin.query.filter_by(name = self.name).first()
-            icfg = Config.query.filter_by(plugin_id=plg.id, role="Runtime", name=form.get("name")).first()
-            if icfg is None:
-                icfg = Config(plugin_id=plg.id, role="Runtime", name=form.get('name'))
-            #TODO we need to validate this as usable dict
-            #update config obj with formdata
-            new_args = form.get("args")
-            icfg.args = ast.literal_eval(new_args)
-            try:
-                self.app.db.session.add(icfg)
-                self.app.db.session.commit()
-            except:
-                flash("Run Config  submission failed", "error")
-                return 'run'
-            else: 
-                flash("Run Config %s submitted" % form.get("name"), "message")
-                return 'main'
-        else:
-            flash("You must submit name and args", "error")
-            return 'run'
-    
-    def update_run_form(self, cfg_id=None):
-        #display list or form
-        if cfg_id is not None:
-            icfg = Config.query.get(cfg_id)
-            form = RunArgsForm(id="run", name = icfg.name, args=icfg.args)   
-            return form
-        else:
-            return RunArgsForm(id="run")
 
-    def do_test(self, form=None, mode=None):
-        from flask import Markup
-        if mode=="stop": #we closed test dialog so power down.
+# This will try to submit a config to the DB            
+    def update_cap_model(self, data):
+        from flask import flash
+        form = CaptureParamsForm(data)
+        action = data.get("submit")
+        cap_panel='file'
+        exfname=self.get_file_name()
+        if action == "Delete":
+            plg = Plugin.query.filter_by(name = self.name).first()            
+            icfg = Config.query.filter_by(plugin_id=plg.id, role="Runtime", name=data.get("name")).first()
             try:
-                self.stop()
-            except:
-                pass
-            return ""
-        if form is None:
-            form = TestParamsForm(id='test')
-        else: 
-            form = TestParamsForm(form)
+                self.app.db.session.delete(icfg)
+                self.app.db.session.commit()
+            except: # bad delete return to cap
+                flash("Could not delete config %s" % data.get('name'), "error")
+            else: #good delete flash and return to main
+                flash("Config %s has been deleted" % data.get('name'), "message")
+                form=None
+        else:
             if form.validate():
-                kwargs = {'sub_dir':'test', 'date_dir': None, 'date_pattern': None}
-                kwargs['file_prefix']="PhenoCam_Test"
-                kwargs['image_type'] = 'jpg'
-                kwargs['sensors']=(
-                    {'pixel_format': 'BayerRG8', 'sensor': 'rgb', 'ob_mode': form.obmode.data}, 
-                    {'pixel_format': 'Mono8', 'sensor': 'nir', 'ob_mode': form.obmode.data}
-                )
-                kwargs['exposure_time'] = form.exposure.data
-                kwargs['gain']= form.gain.data
-                kwargs['persist']=True
+                plg =Plugin.query.filter_by(name = self.name).first()            
+                icfg = Config.query.filter_by(plugin_id=plg.id, role="Runtime", name=data.get("name")).first()
+                if icfg is None:
+                    icfg = Config(plugin_id=plg.id, role="Runtime", name=data.get('name'))
+                icfg.args ={}
+                icfg.args['sub_dir']=form.file_settings.sub_dir.data
+                icfg.args['date_dir']=form.file_settings.date_dir.data
+                icfg.args['date_dir_nested']=form.file_settings.date_dir_nested.data
+                icfg.args['image_type'] =form.file_settings.image_type.data
+                icfg.args['file_prefix']=form.file_settings.file_prefix.data
+                exfname = self.get_file_name(**icfg.args)
+                icfg.args['rgb']={'pixel_format':form.rgb_settings.pixel_format.data,'ob_mode': form.rgb_settings.ob_mode.data }
+                icfg.args['nir']={'pixel_format':form.nir_settings.pixel_format.data,'ob_mode': form.nir_settings.ob_mode.data }
+                exp_vals = [ s.strip() for s in form.shot_settings.exposure.data.splitlines()]
+                gain_vals = [ s.strip() for s in form.shot_settings.gain.data.splitlines()]
+                icfg.args['sequence']=[]
+                gains = len(gain_vals)          
+                for e in exp_vals:
+                    i = exp_vals.index(e)
+                    gain=0; # default if nothing specified
+                    if gains==1: # on val for all exposures
+                        gain=gain_vals[0]
+                    elif gains>1 and i < gains: #use whats specd
+                        gain = gain_vals[i]   
+                    icfg.args['sequence'].append ({'exposure_time': int(e), 'gain': int(gain) })
                 try:
-                    self.run(**kwargs)
-                    ts = int(time.time())
-                    content = Markup("<img id='rgb' src='/fileadmin/download/PhenoCam/test/PhenoCam_Test_rgb.jpg?")
-                    content += Markup(str(ts))
-                    content += Markup("' /><br/>")
-                    content += Markup("<img id='nir' src='/fileadmin/download/PhenoCam/test/PhenoCam_Test_nir.jpg?")
-                    content += Markup(str(ts))
-                    content += Markup("' />")
-                except:
-                    content = Markup("Error")
-                return content
-            else:
-                content=Markup("<ul class=errors>")
-                for name,msgs in form.errors.iteritems():
-                    for msg in msgs:
-                        content+=Markup("<li>"+name+": ")
-                        content+=Markup(msg)
-                        content+=Markup("</li>")
-                content+= Markup("</ul>")
-                return content
-        d=self._powerdelay
-        return self.render(self.path+"/test.html", test_form = form, delay=d)
+                    self.app.db.session.add(icfg)
+                    self.app.db.session.commit()
+                except: # failed submit return to cap with form as is
+                    flash("Shot Config  submission failed", "error")
+                else: 
+                    flash("Shot Config %s updated" % data.get("name"), "message")
+
+            else: # form didn't validate return with form for inspection
+                errmsg = "Check your config for errors:\n"
+                for n in form.errors.keys():
+                    if n == "file_settings":
+                        cap_panel = 'file'
+                    elif n=="shot_settings":
+                        cap_panel = 'shot'
+                flash(errmsg, "error")
+        return (exfname,cap_panel,form)
+        
+        
+ # This will populate the cap_form with a config if given   
+    def update_cap_form(self, cfg_id=None):      
+        cap_form = CaptureParamsForm(id="cap")
+        exfname=self.get_file_name()
+        if cfg_id is not None:
+            cfg = Config.query.get(cfg_id)
+            icfg = cfg.args
+            cap_form.name.data = cfg.name
+            # file_setting_form            
+            cap_form.file_settings.sub_dir.data = icfg.get("sub_dir", "")
+            cap_form.file_settings.date_dir.data = icfg.get("date_dir", "Daily")
+            cap_form.file_settings.date_dir_nested.data = icfg.get("date_dir_nested", False)
+            cap_form.file_settings.image_type.data = icfg.get("image_type", "jpg")
+            cap_form.file_settings.file_prefix.data = icfg.get("file_prefix", "jai")            
+            # rgb_settings
+            rgb_conf = icfg.get("rgb",{})
+            cap_form.rgb_settings.pixel_format.data = rgb_conf.get("pixel_format", "BayerRG8")
+            cap_form.rgb_settings.ob_mode.data = rgb_conf.get("ob_mode", False)
+            # nir_settings
+            nir_conf = icfg.get("nir",{})
+            cap_form.nir_settings.pixel_format.data = nir_conf.get("pixel_format", "Mono8")
+            cap_form.nir_settings.ob_mode.data = nir_conf.get("ob_mode", False)
+            # shot_settings
+            shots = icfg.get("sequence", [])
+            if shots is not None:
+                exp=[]
+                gain=[]
+                for s in shots:
+                    exp.append(str(s.get("exposure_time")))
+                    g = s.get("gain")
+                    if g is not None:
+                        gain.append(str(g))
+                if len(gain) == 0:
+                    gain.append('0')
+                cap_form.shot_settings.exposure.data = "\n".join(exp)
+                cap_form.shot_settings.gain.data = '\n'.join(gain)
+            exfname = self.get_file_name(**icfg)
+        return exfname, cap_form            
+ 
+    def get_file_name(self, **kwargs):
+        fp = kwargs.get('file_prefix', 'jai')
+        sd = kwargs.get("sub_dir", None)
+        if sd == "":
+            sd=None
+        dd = kwargs.get("date_dir", "Daily")
+        nt = kwargs.get("date_dir_nested", False)
+        if nt == 'true':
+            nt = True
+        else:
+            nt = False            
+        it = kwargs.get("image_type", "jpg")
+        
+        rval = self._gen_filename(prefix=fp, subdir=sd, split=dd, nest=nt)
+        rval += ".%s" %it
+        return rval
+    
+    def do_capture(self, cfg_id=None):
+        rval={}
+        if cfg_id is not None:
+            cfg = Config.query.get(cfg_id)
+            self.run(**cfg.args) 
+            rval=self.last_run
+        else:
+            rval['success']=False
+            rval['error_msg']="No configuration requested"
+        return rval
         
     def do_device_reset(self):
         from flask import flash,redirect
@@ -267,10 +336,8 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             name ="HDR 10 Shot", 
             role="Runtime",
             args={
-                        'sensors':(
-                            {'sensor':'rgb', 'pixel_format': 'BayerRG8', 'ob_mode': False},
-                            {'sensor':'nir', 'pixel_format': 'Mono8','ob_mode': False}        
-                        ),
+                        'rgb':{'pixel_format': 'BayerRG8', 'ob_mode': False},
+                        'nir':{'pixel_format': 'Mono8','ob_mode': False},      
                         'file_prefix': 'hdr',
                         'sequence':[
                             {'exposure_time': 20},
@@ -289,46 +356,57 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         )
         return [cfg]
        
-      
+    # Dont seem to be able to add other endpoints 
+    # so we have to handle it all here
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):
         
         from flask.ext.admin import helpers as h
-        from flask import flash,request
+        from flask import flash,request,jsonify
         
         if not self.initalized:
             flash("PhenoCam has not been properly initalized! See Settings Tab", 'error' )
         d = self._powerdelay   
         active_tab = 'main'
+        cap_cfg = None
+        cap_form = None
+        cap_panel = 'file'
         #check for button actions on main
-        run_cfg = None
         action = request.args.get('action')
         if action is not None:
             if action == "reset":
                 return self.do_device_reset()
             if action == "reinit":
                 return self.do_reinit()
-            if action == "test":
-                return self.do_test(mode=request.args.get('mode')) 
             if action == "status":
                 return self.do_status()
             if action == "logs":
                 return self.get_logs(request.args)
+            if action =="capture":
+                return jsonify(**self.do_capture(request.args.get('cfg_id')))
+            if action == "filename":
+                cfg = request.args.to_dict()
+                return jsonify(fname=self.get_file_name(**cfg))
         #check for form submit
         if h.is_form_submitted():
             form_data = request.form
             form_type = form_data.get('id')
+            #change the init config
             if form_type == 'init':
-                active_tab = self.update_init_model(request.form)              
-            elif form_type == 'run':
-                active_tab = self.update_run_model(request.form)
-            elif form_type == 'run_list':
-                active_tab = 'run'
+                active_tab = self.update_init_model(request.form)     
+            # cap config added or editied
+            elif form_type == 'cap':
+                exfname,cap_panel,cap_form = self.update_cap_model(form_data)
+                active_tab='cap'
+             # config selected from list, so load it up.    
+            elif form_type == 'cap_list':
+                active_tab = 'cap'
                 #This gets the id of selected config
                 if form_data.get('config')=='__None':
-                    run_cfg=None
+                    cap_cfg=None
                 else:
-                    run_cfg = int(form_data.get('config'))
+                    cap_cfg = int(form_data.get('config'))
+                    
             elif form_type == 'test':
                 return self.do_test(form=request.form)           
                     
@@ -337,22 +415,28 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         
         #runconfiglistform lets us load saved configs for editing
         #not ajax just reload
-        if run_cfg is not None:
-            selected = Config.query.get(run_cfg)
+        if cap_cfg is not None:
+            selected = Config.query.get(cap_cfg)
         else:
             selected = None
-        run_list = RunConfigListForm(id="run_list", config=selected)
-        
+            
+        #run_list = RunConfigListForm(id="run_list", config=selected)
+        cap_list = CapConfigListForm(id="cap_list", config=selected)
         #this adds on change which reloads the form with data
-        list_opts = {
+        cap_opts = {
                 'widget_args':{
                     'config': {
                         'onchange': 'this.form.submit()'
                     }                
                 }        
         }
+       
+        
         #now load run form with selected config or nothing.
-        run_form = self.update_run_form(run_cfg)   
+       # run_form = self.update_run_form(run_cfg)   
+        #load /update cap form 
+        if cap_form is None:
+            exfname, cap_form = self.update_cap_form(cap_cfg) 
         
         status={}     
         status['ok'] = self.initalized
@@ -364,10 +448,12 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         return self.render(
             self.view_template, status=status,
             init_form = init_form, 
+            cap_form = cap_form,
             active_tab = active_tab,
             return_url = "/phenocam/",
-            run_list=run_list,
-            list_opts = list_opts,
-            run_form=run_form,
+            cap_list=cap_list,
+            cap_opts=cap_opts,
+            exfname = exfname,
+            cap_panel=cap_panel,
             delay=d
             )

@@ -1,0 +1,53 @@
+{% macro extra() %}
+  <input name="_continue_editing" type="submit" class="btn btn-default" value="{{ _gettext('Save and Continue') }}" />
+{% endmacro %}
+
+{% macro field_group(field, kwargs={}) %}
+{% set direct_error = h.is_field_error(field.errors) %}
+<div class="form-group{{ ' error' if direct_error else '' }}">
+    <label for="{{ field.id }}" class="col-sm-2 control-label">{{ field.label.text }}
+        {% if h.is_required_form_field(field) %}
+          <strong style="color: red">&#42;</strong>
+        {%- else -%}
+          &nbsp;
+        {%- endif %}
+    </label>
+      {% if field.widget.input_type!='checkbox'%}
+        <div class="col-sm-8">
+      {% else %}
+        <div class="col-sm-1">
+      {% endif %}
+      {% set _dummy = kwargs.setdefault('class', 'form-control') %}
+      {{ field(**kwargs)|safe }}
+        </div>
+    {% if field.description %}
+    <span class="help-block col-sm-8 col-sm-offset-2">{{ field.description }}</span>
+    {% endif %}
+    {% if direct_error %}
+    <div class="col-sm-8 col-sm-offset-2">
+      <ul{% if direct_error %} class="input-errors"{% endif %}>
+      {% for e in field.errors if e is string %}
+        <li class="text-danger">{{ e }}</li>
+      {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro do_form_fields(form, form_opts={}) %}
+
+    {% for f in form if f.widget.input_type == 'hidden' %}
+        {{ f }}
+    {% endfor %}
+
+    {% for f in form if f.widget.input_type != 'hidden' %}
+      {% if form_opts %}
+        {% set kwargs = form_opts.get(f.name, {}) %}
+      {% else %}
+        {% set kwargs = {} %}
+      {% endif %}
+      {{field_group(f, kwargs) }}
+    {% endfor %}
+
+{% endmacro%}

@@ -1,6 +1,7 @@
 {% import 'admin/lib.html' as lib with context %}
  <div>
-       <form id="test-form" action="/phenocam/" method="POST" role="form" class="admin-form form-horizontal" enctype="multipart/form-data">
+       <form id="test-form" action="/phenocam/" method="POST" class="form-horizontal" role="form" class="admin-form form-horizontal" enctype="multipart/form-data">
+            
             {{ lib.render_form_fields(test_form, form_opts=form_opts) }}
             <hr>
             <div class="form-group">

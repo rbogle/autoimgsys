@@ -59,6 +59,8 @@ class JAI_AD80GE(PoweredTask):
            #we need to start camerasys as this is task callback
             if not self._started:   
                 self.start()
+            self.last_run['images']=list()
+            self.last_run['config']=kwargs
             self.logger.debug("Shot config is:\n %s" % pprint.pformat(kwargs, indent=4))
             persist = kwargs.get("persist", False)
             datepattern = kwargs.get("date_pattern", "%Y-%m-%dT%H%M%S" ) 
@@ -70,12 +72,12 @@ class JAI_AD80GE(PoweredTask):
             imgtype = kwargs.get("image_type", 'tif')
             sequence = kwargs.get('sequence', None)
             # Get the sensor configurations
-            sensor_confs = kwargs.get("sensors", ())
-            for sc in sensor_confs:
-                sname = sc.get("sensor", None) 
+            sensor_confs = {'rgb': kwargs.get("rgb", {}), 'nir': kwargs.get("nir", {})}
+            for sname, sc in sensor_confs.iteritems():
                 def_fmts = {'rgb': 'BayerRG8', 'nir': 'Mono8'}
                 if sname in def_fmts.keys():
-                    self._sensors[sname].cam.set_pixel_format_as_string(sc.get("pixel_format", def_fmts.get(sname,None)))   
+                    def_fmt = def_fmts.get(sname)
+                    self._sensors[sname].cam.set_pixel_format_as_string(sc.get("pixel_format", def_fmt))   
                     ob_mode = sc.get('ob_mode', False)
                     if ob_mode:
                         self._sensors[sname].cam.write_register(0xa41c,1)
@@ -305,8 +307,9 @@ class JAI_AD80GE(PoweredTask):
                 #TODO test name for file extension first?
                 #TODO add metadata?
                 iname = name+ "_"+sens.name+"." + imgtype
-                self.logger.debug("Jai capturing and saving image as: %s"%iname)
+                self.logger.info("Jai capturing and saving image as: %s"%iname)
                 cv2.imwrite(iname, data)
+                self.last_run['images'].append(iname)
                
                 
     def configure_sensor(self,sensor, **kwargs ):
