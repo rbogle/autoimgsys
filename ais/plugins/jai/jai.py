@@ -82,27 +82,26 @@ class JAI_AD80GE(PoweredTask):
                     if ob_mode:
                         self._sensors[sname].cam.write_register(0xa41c,1)
                     else:
-                        self._sensors[sname].cam.write_register(0xa41c,0)
-                    
-            # Leave in for backward compat on configs        
-            pixformats = kwargs.get("pixel_formats", ())
-            for pf in pixformats:
-                sname = pf.get("sensor", None)                
-                self._sensors[sname].cam.set_pixel_format_as_string(pf.get("pixel_format", None))
-                
-            #do we have a sequence to take or one-shot
+                        self._sensors[sname].cam.write_register(0xa41c,0)                          
+                #create frame bufer
+                self._sensors[sname].cam.create_buffers(1);        
+                # start/stop acquisition have to be outside the capture loop.                        
+                self._sensors[sname].cam.start_acquisition_trigger() 
+                #we need to put in the packet delay to improve reliability
+                self._sensors[sname].cam.set_integer_feature("GevSCPD",4000)
+                #and set sync mode for image capture 
+                self._sensors[sname].cam.set_string_feature("SyncMode", "Sync")
+
             self.last_run['time'] = datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S")
-            if sequence is not None:
-                if isinstance(sequence,list):
-                    for i,shot in enumerate(sequence):
-                        fname=filename+"_"+ "%02d" % i
-                        self.configure_shot(**shot)
-                        self.save_image(fname,imgtype)
-            else:
-                #looking for settings for one-shot
-                self.configure_shot(**kwargs)
-                self.save_image(filename,imgtype)
-  
+
+            for i,shot in enumerate(sequence):
+                fname=filename+"_"+ "%02d" % i
+                self.capture_image(fname,imgtype,**shot)
+                
+            # start/stop acquisition have to be outside the capture loop.
+            for sens in self._sensors.itervalues():
+                sens.cam.stop_acquisition()
+                
             if not persist:
                 self.stop()        
         except Exception as e:
@@ -155,6 +154,7 @@ class JAI_AD80GE(PoweredTask):
                 sensor_status["PixelFormat"]=sensor.cam.get_string_feature("PixelFormat")
                 sensor_status["ShutterMode"]=sensor.cam.get_string_feature("ShutterMode")
                 sensor_status["PacketSize"]=sensor.cam.get_integer_feature("GevSCPSPacketSize")
+                sensor_status["PacketDelay"]=sensor.cam.get_integer_feature("GevSCPD")
 
                 status[sensor.name] = sensor_status  
                 
@@ -178,8 +178,7 @@ class JAI_AD80GE(PoweredTask):
         if sensors is not None:
             self._sensors = dict()
             self.logger.info("Setting sensors for JAI camera")
-            for s in sensors :
-                
+            for s in sensors :                
                 name =s.get("name", None)
                 self._sensors[name] = Sensor(**s)
                 self.logger.info("Sensor: %s loaded" %name)
@@ -264,7 +263,7 @@ class JAI_AD80GE(PoweredTask):
             self._ar = Aravis()
             for sens in self._sensors.itervalues():
                 self.logger.debug("Getting Handle for Sensor: %s" %sens.name)
-                sens.cam = self._ar.get_camera(sens.mac) 
+                sens.cam = self._ar.get_camera(sens.mac)
                 if sens.cam.get_float_feature("ExposureTime") > 0:
                     sens.cam.use_exposure_time = True
                 else:
@@ -287,56 +286,15 @@ class JAI_AD80GE(PoweredTask):
             self.logger.info("JAI_AD80GE is powering down")        
         self._started = False 
 
-        
-    def save_image(self, name, imgtype=".tif"):
-        if not self._started:
-            self.logger.error("Camera device must be started before capture")
-            return None
-        else:         
-            for sens in self._sensors.itervalues():
-                sens.cam.create_buffers(1)
-                #data = sens.cam.get_frame()
-                data = self._capture_frame(sens)
-                pxf = sens.cam.get_pixel_format_as_string()
-                #convert bayer data
-                #TODO: handle packed formats?
-                if 'BayerRG' in pxf: #JAI_AD80GE outputs only RG pattern.
-                    data = cv2.cvtColor(data, cv2.COLOR_BAYER_RG2RGB)
-                    # Bayer_RG2RGB  used to get acceptable RGB format
-                # for cv2.imwrite. this is easiest lib/method to keep 16bit format                             
-                #TODO test name for file extension first?
-                #TODO add metadata?
-                iname = name+ "_"+sens.name+"." + imgtype
-                self.logger.info("Jai capturing and saving image as: %s"%iname)
-                cv2.imwrite(iname, data)
-                self.last_run['images'].append(iname)
-               
-                
-    def configure_sensor(self,sensor, **kwargs ):
-        if self._started:
-              camconf = kwargs.get("sensor_config", {}) 
-              for setting in camconf:
-                  stype = setting.get("type", None)
-                  sname = setting.get("name", None)
-                  sval = setting.get("value", None)
-                  if(stype == "string"):
-                      sensor.cam.set_string_feature(sname, sval)
-                  elif(stype=="integer"):
-                      sensor.cam.set_integer_feature(sname, sval)
-                  elif(stype=="float"):    
-                      sensor.cam.set_float_feature(sname, sval)
-        else:
-            self.logger.error("JAI_AD80GE is not started")
-            raise Exception("JAI Camera is not started.")
-        
-    def configure_shot(self, **kwargs):
+    def capture_image(self, name, imgtype="tif", **kwargs):
         if self._started:
             for sensor in self._sensors.itervalues():
+                # Setup shot params
                 if sensor.cam.use_exposure_time:
                     sensor.cam.set_exposure_time(float(kwargs.get("exposure_time", 33342)))
                 else:
                     sensor.cam.set_integer_feature("ExposureTimeAbs", int(kwargs.get("exposure_time", 33342)))
-                sensor.cam.set_integer_feature("GainRaw",int(kwargs.get("gain", 0)))
+                sensor.cam.set_gain(float(kwargs.get("gain", 0)))
                 #max_width,max_height  = sensor.cam.get_sensor_size()
                 max_width=sensor.cam.get_integer_feature("WidthMax")
                 max_height=sensor.cam.get_integer_feature("HeightMax")
@@ -345,10 +303,43 @@ class JAI_AD80GE(PoweredTask):
                                       kwargs.get("offset_y", 0),                                      
                                       kwargs.get("width", max_width),
                                       kwargs.get("height", max_height))
+                                      
+            if self._sensors['rgb'].cam.use_exposure_time:
+                exp = self._sensors['rgb'].cam.get_exposure_time()
+            else:
+                exp = self._sensors['rgb'].cam.get_integer_feature("ExposureTimeAbs")        
+               
+            gain = self._sensors['rgb'].cam.get_gain();                
+            self.logger.debug("Jai ExposureTime: %d, GainRaw: %d " % (exp,gain) )
+
+            rgb_status=6 # ARV_BUFFER_STATUS_FILLING
+            nir_status=6 # ARV_BUFFER_STATUS_FILLING
+            tries=10 #exit out after 10 loops if nothing is complete
+            
+            # we retry frame grabs if they are incomplete: status will report non-zero for a problem. 
+            while ( (rgb_status or nir_status) and tries):
+                
+                self._sensors['rgb'].cam.trigger()
+                rgb_status, rgb_data = self._sensors['rgb'].cam.get_frame()
+                nir_status, nir_data = self._sensors['nir'].cam.get_frame()
+                tries-=1
+                self.logger.debug("rgb_status %d, nir_status %d, tries: %d" %(rgb_status,nir_status,10-tries))    
+            #make our filenames
+            rgb_name = name+ "_rgb." + imgtype
+            nir_name = name+ "_nir." + imgtype
+            # convert bayer color to rgb color
+            rgb_data = cv2.cvtColor(rgb_data, cv2.COLOR_BAYER_RG2RGB)
+            cv2.imwrite(rgb_name, rgb_data)
+            cv2.imwrite(nir_name, nir_data)
+ 
+            self.logger.info("Jai capturing and saving image as: %s"%rgb_name)
+            self.logger.info("Jai capturing and saving image as: %s"%nir_name)
+            self.last_run['images'].append(rgb_name)  
+            self.last_run['images'].append(nir_name)  
         else:
             self.logger.error("JAI_AD80GE is not started")
             raise Exception("JAI Camera is not started.")
-       
+              
     def add_sensor(self, name, macaddress):
         kwa = {'name': name, 'mac': macaddress}
         sensor = Sensor(**kwa)
@@ -398,28 +389,7 @@ class JAI_AD80GE(PoweredTask):
                 self.logger.error("Plugin %s is not available" %relay_name)
         else:
             self._powerctlr = None
-                    
-    def _capture_frame(self, sensor):
-        frame = None
-        if sensor is not None:
-            sensor.cam.start_acquisition_continuous() 
-            exp=None
-            if sensor.cam.use_exposure_time:
-                exp = sensor.cam.get_exposure_time()
-            else:
-                exp = sensor.cam.get_integer_feature("ExposureTimeAbs")
-                
-            gain = sensor.cam.get_gain();
-            self.logger.debug("Jai ExposureTime: %d, GainRaw: %d " % (exp,gain) )
-            sensor.cam.get_frame()
-            time.sleep(.100)
-            frame = sensor.cam.get_frame()
-            sensor.cam.stop_acquisition()
-        else:
-            self.logger.error("Capture_Frame failed not a valid sensor")
-            raise Exception ("Invalid Sensor Object")
-        return frame 
-               
+                                 
     def _gen_filename(self, prefix="jai", dtpattern="%Y-%m-%dT%H%M%S", subdir=None, split=None, nest=False):
         #TODO parse namepattern for timedate pattern?
         #datetime.datetime.now().strftime(dtpattern)

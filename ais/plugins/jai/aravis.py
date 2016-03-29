@@ -252,25 +252,26 @@ class Stream(object):
 
     def _array_from_buffer(self, buf):
         if not buf:
-            return None
+            return (None,None)
+        #print ("buffer status is: %d" %buf.contents.status)
+        status = buf.contents.status
         #im = np.ctypeslib.as_array(buf.contents.data, (buf.contents.height, buf.contents.width))
         b = self._buf_from_memory(buf.contents.data, buf.contents.size*8)
-        #TODO changed to handle multiple formats
-        if '8' in self.pixel_format:
+        if  '8' in self.pixel_format:
             pixelformat = np.uint8
         else:
             pixelformat = np.uint16
         im = np.frombuffer(b, dtype=pixelformat, count=buf.contents.height * buf.contents.width)
         im.shape = (buf.contents.height, buf.contents.width) 
-        #logging.debug("Image array shape: %s" % (im.shape,))
+        #print("Shape: ", im.shape)
         im = im.copy()
         self.push_buffer(buf)
-        return im
-
+        return (status,im)
+        
     def try_pop_array(self):
         buf = self.try_pop_buffer()
-        return self._array_from_buffer(buf)
-
+        (status,frame) = self._array_from_buffer(buf)
+        return (status,frame)
 
 class Device(object):
     """
@@ -422,9 +423,9 @@ class Camera(Device):
         Does not use directly C version since it may hang 
         """
         while True:
-            frame = self.stream.try_pop_array()
+            (status,frame) = self.stream.try_pop_array()
             if frame != None:
-                return frame
+                return (status,frame)
             else:
                 time.sleep(0.005)
 
@@ -432,6 +433,7 @@ class Camera(Device):
         """
         trigger camera to take a picture in trigger source mode
         """
+        #self._ar.dll.arv_camera_software_trigger(self._handle)
         self.execute_command("TriggerSoftware")
 
     def __str__(self):
