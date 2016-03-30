@@ -317,13 +317,17 @@ class JAI_AD80GE(PoweredTask):
             tries=10 #exit out after 10 loops if nothing is complete
             
             # we retry frame grabs if they are incomplete: status will report non-zero for a problem. 
-            while ( (rgb_status or nir_status) and tries):
-                
+            while ( (rgb_status or nir_status) and tries):             
                 self._sensors['rgb'].cam.trigger()
                 rgb_status, rgb_data = self._sensors['rgb'].cam.get_frame()
                 nir_status, nir_data = self._sensors['nir'].cam.get_frame()
                 tries-=1
-                self.logger.debug("rgb_status %d, nir_status %d, tries: %d" %(rgb_status,nir_status,10-tries))    
+                if rgb_status:
+                    self.logger.error("Requesting new frame-set. Corrupted RGB frame. RGB_status: %d" %(rgb_status))    
+                if nir_status:
+                    self.logger.error("Requesting new frame-set. Corrupted RGB frame. NIR_status: %d" %(nir_status))
+                if tries==0:
+                    self.logger.error("Giving up on frame-set. 10 attempts at capturing clean frames.")
             #make our filenames
             rgb_name = name+ "_rgb." + imgtype
             nir_name = name+ "_nir." + imgtype
