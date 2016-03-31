@@ -153,6 +153,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
             else: #good delete flash and return to main
                 flash("Config %s has been deleted" % data.get('name'), "message")
                 form=None
+                icfg.id = None
         else:
             if form.validate():
                 plg =Plugin.query.filter_by(name = self.name).first()            
@@ -196,7 +197,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                     elif n=="shot_settings":
                         cap_panel = 'shot'
                 flash(errmsg, "error")
-        return (exfname,cap_panel,form)
+        return (icfg.id,exfname,cap_panel,form)
         
         
  # This will populate the cap_form with a config if given   
@@ -391,12 +392,13 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
         if h.is_form_submitted():
             form_data = request.form
             form_type = form_data.get('id')
+            
             #change the init config
             if form_type == 'init':
                 active_tab = self.update_init_model(request.form)     
             # cap config added or editied
             elif form_type == 'cap':
-                exfname,cap_panel,cap_form = self.update_cap_model(form_data)
+                cap_cfg,exfname,cap_panel,cap_form = self.update_cap_model(form_data)
                 active_tab='cap'
              # config selected from list, so load it up.    
             elif form_type == 'cap_list':
