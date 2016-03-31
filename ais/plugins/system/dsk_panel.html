@@ -1,5 +1,26 @@
 <div class="panel panel-default full">
     <div class="panel-heading">Storage Configuration</div>
     <div class="panel-body">
+    {% for disk in disks %}
+        <table class="table">
+            <tr><th>Name</th><th>Device</th><th>Size</th></tr>
+            <tr><td>{{disk['name']}}</td><td>{{disk['device']}}</td><td>{{disk['size']}}</td></tr>
+            <tr><td></td><td colspan=2>
+                <table class="table">
+                    <tr><th>Mounted</th><th>Partition</th><th>Mount Point</th><th>Size</th><th>Type</th><th>Actions</th></tr>
+                    {% for part,info in disk['parts'].iteritems() %}
+                        <tr>
+                            <td>{{info['mounted']}}</td>
+                            <td>{{part}}</td>
+                            <td>{{info['dir']}}</td>
+                            <td>{{info['size']}}</td>
+                            <td>{{info['type']}}</td>
+                            <td>action</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            </td></tr>
+        </table>
+    {% endfor %}
     </div>
 </div>

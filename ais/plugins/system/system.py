@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
 from flask.ext.admin import expose
-from flask import Markup, jsonify, redirect
+from flask import Markup, jsonify
 from flask.ext.admin.form import BaseForm
-from wtforms import SelectField, TextField
+from wtforms import SelectField
 from flask.ext.admin.form.fields import DateTimeField
-from ais.lib.task import Task
-from ais.ui.models import Event,Log,Plugin
-from ais.ui import config
-import subprocess,datetime,pytz,re,os,glob
-from tzlocal import get_localzone, reload_localzone
-from collections import OrderedDict
+import pytz
+from tzlocal import reload_localzone
+import ais.plugins.system.utility as utility
 
 def get_tzlist():
     tzlist =list()
@@ -24,7 +21,7 @@ class DateTimeForm(BaseForm):
     timezone = SelectField("Timezone", choices = get_tzlist(), default= lambda: reload_localzone().zone)
             
     
-class System(Task):
+class System(utility.Utility):
     
     def __init__(self, **kwargs):
         super(System, self).__init__(**kwargs)
@@ -35,9 +32,6 @@ class System(Task):
         self.use_sqllog = True
         self.view_template = self.path+'/system.html'
         self.widget_template = self.path+'/sys_widget.html'
-
-    def run(self, **kwargs):
-        pass
     
     @expose('/', methods=('GET', 'POST'))
     def plugin_view(self):  
@@ -76,9 +70,11 @@ class System(Task):
             ('dsk',self.path+"/dsk_panel.html","Storage"),
             ('net',self.path+"/net_panel.html","Networking")
         ]
+        d = self._get_disk_info()
+
         w = self.get_widgets()
         i = self._get_sys_info()
-        return self.render(self.view_template, info=i, widgets=w, panels=p)
+        return self.render(self.view_template, info=i, widgets=w, panels=p, disks=d)
     
     def get_widget_modal(self, name):
         if name == 'reboot':
@@ -170,131 +166,6 @@ class System(Task):
         return jsonify({ 'title': title, 'body': body, 'url': url})
 
         
-    def _get_sys_info(self):
-        #self.logger.info("System Module: Sys Info Requested")
-        now = subprocess.check_output("date")
-        #uptime
-        with open('/proc/uptime', 'r') as f:
-            us = float(f.readline().split()[0])
-            uptime = str(datetime.timedelta(seconds = int(us)))
-            
-        hostname = subprocess.check_output("hostname")
-        kernel = subprocess.check_output(['uname', '-sr'])
-        #disk info
-        di = subprocess.check_output(['df','-h','-t', 'ext4']).split('\n')
-        disks = ""
-        for l in di[1:]:
-            l= l.split()
-            if len(l)>0:
-                l = l[5]+'\t'+l[1]+'\t'+l[4]+'\t'+l[0]
-                disks += Markup(l+"<br/>")
-        #eth info        
-        ifcfg = subprocess.check_output('/sbin/ifconfig').split('\n\n')
-        ifaces = ""
 
-        for i in ifcfg:
-            if i != "":    
-                net = re.search("^[0-9a-z]*\w",i)
-                if net is not None:
-                    net = net.group(0)
-                addr= re.search("\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}",i)
-                if addr is not None:
-                    addr = addr.group(0)
-                    ifaces += Markup(net+": "+addr+"<br/>")
-#        for i in range(len(ifcfg))[0::10]:
-#            data=','.join( ifcfg[i:i+2]).split()
-#            data[7] = data[7].split(":")[1]
-#            ifaces += Markup(data[0]+": "+data[7]+"<br/>")
-        return OrderedDict([('Hostname',hostname),('Kernel',kernel),
-                            ('Time', now),('Up-Time', uptime),('Disks', disks), ('Net',ifaces)])
-    
-    def _reset_sys(self):
-        
-        db_path = config.DATABASE_PATH
-        
-        try:
-            pid = subprocess.check_output(['pgrep', 'ais_service'])
-        except subprocess.CalledProcessError as cpe:
-            self.logger.error(cpe.output)
-            return         
-        cmd = "sudo kill -HUP %s" %pid
-        #delete dbs         
-        for f in glob.glob(db_path+"*.sqlite"):
-            os.remove(f)
-        #now hup the service to restart
-        try:
-            #self.logger.debug("Doing: %s" %cmd)
-            subprocess.check_output(cmd.split())
-        except subprocess.CalledProcessError as cpe:
-            exit()
-    
-    def _reboot_sys(self):
-        self.logger.info("System Module: Reboot Requested")
-        command = "sudo shutdown -r now"
-        try:
-            subprocess.check_output(command.split())
-        except subprocess.CalledProcessError as cpe:
-            self.logger.error(cpe.output)
-            
-    def _conf_datetime(self, form):
-        tz=form.get('timezone')
-        dt = form.get('datetime')
-        self.logger.info("tz: %s, datetime: %s" %(tz,dt))
-        #handle tz
-        tz_now = reload_localzone().zone
-        if tz!=tz_now:
-            self._set_timezone(tz)
-        #handle datetime
-        if dt!="":
-            self._set_datetime(dt)
-        #handle ntp 
-            
-    def _set_datetime(self, datestr):
-        cmd = "sudo date --set %s" %datestr
-        try:
-           output= subprocess.check_output(cmd.split())
-           self.logger.info("DateTime set to: %s" %output)
-        except subprocess.CalledProcessError as cpe:
-            self.logger.error(cpe.output)
-            
-    def _set_timezone(self, tzname):
-        #TODO specific to Ubuntu distro
-        cmds=[
-            "sudo cp /etc/localtime /etc/localtime.old",
-            "sudo ln -sf /usr/share/zoneinfo/%s /etc/localtime" %tzname,
-            "sudo mv /tmp/timezone /etc/timezone"
-        ]
-        #make a tmp file then mv it over to /etc/timezone
-        with open('/tmp/timezone', 'wt') as outf:
-            outf.write(tzname+'\n')        
-        try:        
-            for c in cmds:
-                subprocess.check_output(c.split())
-            self.logger.info("Timezone Changed to %s"%tzname)
-        except subprocess.CalledProcessError as cpe:
-            self.logger.error(cpe.output)
-            
-    def _download_logs(self):
-        import StringIO,csv
-        from flask import send_file
-        sio = StringIO.StringIO()
-        cw = csv.writer(sio)
-        cw.writerow(['Datetime','Plugin','Module', 'Level', 'Msg', 'Trace'])
-        for log in Log.query.all():
-            cw.writerow([log.created, log.logger, log.module, log.level, log.msg, log.trace])
-        sio.seek(0)
-        return send_file(sio, attachment_filename="AIS_Logs.csv", as_attachment=True)
-    
-    def _download_events(self):
-        import StringIO,csv
-        from flask import send_file
-        sio = StringIO.StringIO()
-        cw = csv.writer(sio)
-        cw.writerow(['Datetime','Plugin','Event', 'Msg', 'Trace'])
-        for evt in Event.query.all():
-            pn = evt.plugin.name
-            cw.writerow([evt.datetime, pn, evt.code, evt.msg, evt.trace])
-        sio.seek(0)
-        return send_file(sio, attachment_filename="AIS_Events.csv", as_attachment=True)
         
     
