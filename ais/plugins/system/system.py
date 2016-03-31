@@ -71,11 +71,11 @@ class System(Task):
         if modal is not None:
             return self.get_widget_modal(modal)
         #return default page    
-        p = {
-            'sys': self.path+"/sys_panel.html", 
-            'dsk': self.path+"/dsk_panel.html",
-            'net': self.path+"/net_panel.html"
-        }
+        p = [
+            ('sys',self.path+"/sys_panel.html","System"),
+            ('dsk',self.path+"/dsk_panel.html","Storage"),
+            ('net',self.path+"/net_panel.html","Networking")
+        ]
         w = self.get_widgets()
         i = self._get_sys_info()
         return self.render(self.view_template, info=i, widgets=w, panels=p)

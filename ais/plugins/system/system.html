@@ -7,15 +7,16 @@
 {% endblock %}
 
 {% block body %}
+<!-- tab nav -->
 <ul class="nav nav-tabs" role="tablist" id="myTab">
-  <li class="active"><a href="#sys" role="tab" data-toggle="tab">System</a></li>
-  <li><a href="#dsk" role="tab" data-toggle="tab">Storage</a></li> 
-  <li><a href="#net" role="tab" data-toggle="tab">Networking</a></li>
+  {% for (id,url,label) in panels %}
+  <li{{ " class='active'" if id=='sys' else ""}}><a href="#{{id}}" role="tab" data-toggle="tab">{{label}}</a></li>
+  {% endfor %}  
 </ul>
-
+<!-- tab panels -->
 <div class="tab-content" style="padding-top: 20px;">
-    {% for name,url in panels.iteritems() %}
-    <div class="tab-pane{{' active' if name=='sys' else ''}}" id="{{name}}">
+    {% for (id,url,label) in panels %}
+    <div class="tab-pane{{' active' if id=='sys' else ''}}" id="{{id}}">
         {% include url %}        
     </div>
     {% endfor %}
