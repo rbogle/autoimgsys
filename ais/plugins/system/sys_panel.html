@@ -1,0 +1,34 @@
+<div class="panel">
+    <div class='panel-body'>
+        <div id='info' class="container col-sm-4">
+                <div class="panel panel-default full">
+                    <div class='panel-heading'><strong>System Info</strong></div>
+                    <div class='panel-body'>
+                        <dl>
+                        {% for (name, val) in info.iteritems() %}
+                            <dt>{{name}}:</dt><dd>{{val}}</dd>
+                        {% endfor %}
+                        </dl>
+                    </div>
+                    <div class='panel-footer'>&nbsp</div>
+                </div>
+        </div>
+        <div class="container-fluid col-sm-8 pull-right">
+            {% for (name,body,action) in widgets %}           
+                {%if (loop.index0 % 3) == 0 %} 
+                <div class="row">
+                {%endif%}
+                    <div class="col-sm-4" id="{{name}}">
+                        <div class='panel panel-default full' >
+                            <div class='panel-heading'><strong>{{name}}</strong></div>
+                            <div class='panel-body'> {{body}}</div>
+                            <div class='panel-footer text-right'>{{action}}</div>
+                        </div>
+                    </div>
+               {%if (loop.index0 %3)==2 or (loop.last) %} 
+                </div>
+               {%endif%}
+           {%endfor%} 
+        </div>
+    </div>
+</div>
