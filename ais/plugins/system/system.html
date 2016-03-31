@@ -9,20 +9,16 @@
 {% block body %}
 <ul class="nav nav-tabs" role="tablist" id="myTab">
   <li class="active"><a href="#sys" role="tab" data-toggle="tab">System</a></li>
-  <li><a href="#dsk" role="tab" data-toggle="tab">Disks</a></li> 
+  <li><a href="#dsk" role="tab" data-toggle="tab">Storage</a></li> 
   <li><a href="#net" role="tab" data-toggle="tab">Networking</a></li>
 </ul>
 
-<div class="tab-content" style="padding-bottom: 10px">
-    <div class="tab-pane active" id="sys">
-        {% include '/plugins/system/sys_panel.html' %}        
+<div class="tab-content" style="padding-top: 20px;">
+    {% for name,url in panels.iteritems() %}
+    <div class="tab-pane{{' active' if name=='sys' else ''}}" id="{{name}}">
+        {% include url %}        
     </div>
-    <div class="tab-pane" id="dsk">
-        {% include '/plugins/system/dsk_panel.html' %}
-    </div>
-    <div class="tab-pane" id="net">
-        {% include '/plugins/system/net_panel.html' %}
-    </div>
+    {% endfor %}
 </div>
 <!-- Modal -->
 <div class="modal fade" id="sys-modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
@@ -42,15 +38,6 @@
   </div>
 </div>
 
-
-<!--
-<div id='status_panel' class='panel panel-success'>
-    <div class='panel-heading'>Status</div>
-    <div class='panel-body'><div class="well" >
-     Status
-     </div></div>
-</div>
- -->
 {% endblock %}
 
 {% block tail %}
