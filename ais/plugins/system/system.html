@@ -70,5 +70,16 @@ $('#sys-modal').on('show.bs.modal', function(event){
     );
 })
 
+$('.collapse').on('show.bs.collapse', function(){
+    id = "#"+$(this).attr('id')+"-icon";
+    $(id).removeClass("glyphicon-plus");
+    $(id).addClass("glyphicon-minus");
+});
+
+$('.collapse').on('hide.bs.collapse', function(){
+    id = "#"+$(this).attr('id')+"-icon";
+    $(id).removeClass("glyphicon-minus");
+    $(id).addClass("glyphicon-plus");
+});
 </script>
 {% endblock %}

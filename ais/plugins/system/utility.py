@@ -58,7 +58,8 @@ class Utility(Task):
                     'opts': info[5].translate(None, "()"),
                     'size': usage[1],
                     'used': usage[2],
-                    'avail': usage[3]
+                    'avail': usage[3],
+                    'usedperc': usage[4]
                 }
         return mounts        
             
@@ -80,6 +81,7 @@ class Utility(Task):
                 info = l.split(':')
                 if '/dev' in info[0]:
                     disk['device'] = info[0]
+                    disk['id'] = info[0].split('/')[-1]
                     disk['name']= info[6].replace(";","")
                     disk['size']=info[1]
                 else:

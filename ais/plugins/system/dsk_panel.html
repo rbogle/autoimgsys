@@ -1,26 +1,41 @@
 <div class="panel panel-default full">
     <div class="panel-heading">Storage Configuration</div>
     <div class="panel-body">
-    {% for disk in disks %}
-        <table class="table">
-            <tr><th>Name</th><th>Device</th><th>Size</th></tr>
-            <tr><td>{{disk['name']}}</td><td>{{disk['device']}}</td><td>{{disk['size']}}</td></tr>
-            <tr><td></td><td colspan=2>
-                <table class="table">
-                    <tr><th>Mounted</th><th>Partition</th><th>Mount Point</th><th>Size</th><th>Type</th><th>Actions</th></tr>
-                    {% for part,info in disk['parts'].iteritems() %}
-                        <tr>
-                            <td>{{info['mounted']}}</td>
-                            <td>{{part}}</td>
-                            <td>{{info['dir']}}</td>
-                            <td>{{info['size']}}</td>
-                            <td>{{info['type']}}</td>
-                            <td>action</td>
-                        </tr>
-                    {% endfor %}
-                </table>
-            </td></tr>
+    <h4> Available Disks and Partitions</h4>
+       {% for disk in disks %}
+        <table class="table table-bordered table-responsive">
+            <tr class="active"><th></th><th>Disk Name</th><th>Disk Device</th><th>Disk Size</th></tr>
+             <tr>
+                {% if disk['parts'] %}
+                <td data-toggle="collapse" data-target="#{{disk['id']}}"><span id="{{disk['id']}}-icon" class="glyphicon glyphicon-plus"></span></td>
+                {% else %}
+                <td><span class="glyphicon glyphicon-hdd"></span></td>
+                {% endif %}
+                <td>{{disk['name']}}</td>
+                <td>{{disk['device']}}</td>
+                <td>{{disk['size']}}</td>
+            </tr>
         </table>
-    {% endfor %}
+        {% if disk['parts'] %}
+        <div class="collapse col-sm-offset-1" id="{{disk['id']}}">
+            <table class="table table-bordered table-responsive" >
+                <tr class="active"><th>Mounted</th><th>Partition</th><th>Mount Point</th><th>Size</th><th>% Used</th><th>Type</th><th>Actions</th></tr>
+                {% for part,info in disk['parts'].iteritems() %}
+                {% if ( info['type'] != "") and ( 'swap' not in info['type']) %}
+                    <tr>
+                        <td><span class="glyphicon {{'glyphicon-ok text-success' if info['mounted'] else 'glyphicon-wrench text-warning'}}"></span></td>
+                        <td>{{part}}</td>
+                        <td>{{info['dir']}}</td>
+                        <td>{{info['size']}}</td>
+                        <td>{{info['usedperc'] if info['mounted'] else ""}}</td>
+                        <td>{{info['type']}}</td>
+                        <td>action</td>
+                    </tr>
+                {% endif %}
+                {% endfor %}
+            </table>
+        </div>
+       {% endif %}
+      {% endfor %}
     </div>
 </div>
