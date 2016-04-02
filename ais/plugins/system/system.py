@@ -40,6 +40,7 @@ class System(utility.Utility):
         
         action = request.args.get('action', None)
         modal = request.args.get('modal', None)
+        args = request.args
         
         #datetime form submitted
         if h.is_form_submitted():
@@ -63,7 +64,7 @@ class System(utility.Utility):
  
         #return modal dialog     
         if modal is not None:
-            return self.get_widget_modal(modal)
+            return self.get_widget_modal(modal, **args)
         #return default page    
         p = [
             ('sys',self.path+"/sys_panel.html","System"),
@@ -76,13 +77,15 @@ class System(utility.Utility):
         i = self._get_sys_info()
         return self.render(self.view_template, info=i, widgets=w, panels=p, disks=d)
     
-    def get_widget_modal(self, name):
+    def get_widget_modal(self, name, **kwargs):
         if name == 'reboot':
             return self.get_reboot_modal()
         if name == 'reset':
             return self.get_reset_modal()
         if name == 'datetime':
             return self.get_datetime_modal()
+        if name == 'partition':
+            return self.get_partition_modal(kwargs)
     
     def get_widgets(self):
         return [
@@ -165,7 +168,9 @@ class System(utility.Utility):
         url = ""
         return jsonify({ 'title': title, 'body': body, 'url': url})
 
-        
-
-        
+    def get_partition_modal(self, **kwargs):
+        title = "Edit Partition Mounting"
+        body=""
+        url=""
+        return jsonify({'title':title, 'body':body, 'url': url})
     

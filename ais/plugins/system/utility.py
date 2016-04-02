@@ -22,7 +22,19 @@ class Utility(Task):
     
     def run(self, **kwargs):
         pass
-
+    
+    def _read_fstab(self):
+        fstabs = list()
+        with open("/etc/fstab") as f:
+            for line in f:
+                if not line.strip().startswith("#"):
+                    l = line.rstrip().split()
+                    fstabs.append(l)
+        return fstabs
+        
+    def _get_blkids(self,device=None):
+        pass
+    
     def _get_disk_info(self):
        disk_info = self._get_part_info()
        mounts = self._get_mount_info()
@@ -42,10 +54,17 @@ class Utility(Task):
         except subprocess.CalledProcessError as cpe:
             self.logger.error(cpe.output) 
             return None
+        fstabs = self._read_fstab()
         mounts = dict()
         if outp is not None:
             for line in outp:
                 info = line.split(" ")
+                persist=False
+                for perm in fstabs:
+                    print "mount dir: %s fstab dir: %s" %(info[2],perm[1])
+                    if info[2] == perm[1]:
+                        persist = True
+                        fstab_dev = perm[0]
                 try:
                     cmd="df -h %s" % info[2]
                     usage =subprocess.check_output(cmd.split()).splitlines()[1].split()
@@ -59,8 +78,12 @@ class Utility(Task):
                     'size': usage[1],
                     'used': usage[2],
                     'avail': usage[3],
-                    'usedperc': usage[4]
+                    'usedperc': usage[4],
+                    'persist': persist
                 }
+                if persist:
+                    mounts[info[0]]['fstab_dev']=fstab_dev
+                    
         return mounts        
             
     def _get_part_info(self):

@@ -19,17 +19,28 @@
         {% if disk['parts'] %}
         <div class="collapse col-sm-offset-1" id="{{disk['id']}}">
             <table class="table table-bordered table-responsive" >
-                <tr class="active"><th>Mounted</th><th>Partition</th><th>Mount Point</th><th>Size</th><th>% Used</th><th>Type</th><th>Actions</th></tr>
+                <tr class="active"><th></th><th>Mounted</th><th>Partition</th><th>Mount Point</th><th>Size</th><th>% Used</th><th>File System</th><th>Persistent</th></tr>
                 {% for part,info in disk['parts'].iteritems() %}
                 {% if ( info['type'] != "") and ( 'swap' not in info['type']) %}
                     <tr>
+                        <td>
+                            {% if info['dir'] == '/' %}
+                                <span class="glyphicon glyphicon-lock text-warning"></span>
+                            {% else %}
+                                <a id='partition'class="icon" data-toggle='modal' data-target='#sys-modal''><span class="glyphicon glyphicon-pencil"></span></a>
+                            {% endif %}
+                        </td>
                         <td><span class="glyphicon {{'glyphicon-ok text-success' if info['mounted'] else 'glyphicon-wrench text-warning'}}"></span></td>
                         <td>{{part}}</td>
                         <td>{{info['dir']}}</td>
                         <td>{{info['size']}}</td>
                         <td>{{info['usedperc'] if info['mounted'] else ""}}</td>
                         <td>{{info['type']}}</td>
-                        <td>action</td>
+                        <td>
+                        {% if info['persist'] %}
+                            <span class="glyphicon glyphicon-ok"></span>
+                        {% endif %}                        
+                        </td>
                     </tr>
                 {% endif %}
                 {% endfor %}
