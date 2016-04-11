@@ -257,7 +257,7 @@ class Stream(object):
         status = buf.contents.status
         #im = np.ctypeslib.as_array(buf.contents.data, (buf.contents.height, buf.contents.width))
         b = self._buf_from_memory(buf.contents.data, buf.contents.size*8)
-        if  '8' in self.pixel_format:
+        if '8' in self.pixel_format:
             pixelformat = np.uint8
         else:
             pixelformat = np.uint16

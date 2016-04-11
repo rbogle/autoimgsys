@@ -340,6 +340,7 @@ class PhenoCam(jai.JAI_AD80GE): #note inheritance path due to Yapsy detection ru
                         'rgb':{'pixel_format': 'BayerRG8', 'ob_mode': False},
                         'nir':{'pixel_format': 'Mono8','ob_mode': False},      
                         'file_prefix': 'hdr',
+                        'image_type': 'jpg',
                         'sequence':[
                             {'exposure_time': 20},
                             {'exposure_time': 40},
