@@ -84,13 +84,18 @@ class JAI_AD80GE(PoweredTask):
                     else:
                         self._sensors[sname].cam.write_register(0xa41c,0)                          
                 #create frame bufer
-                self._sensors[sname].cam.create_buffers(1);        
+                #self._sensors[sname].cam.create_buffers(1);        
                 # start/stop acquisition have to be outside the capture loop.                        
-                self._sensors[sname].cam.start_acquisition_trigger() 
+                #self._sensors[sname].cam.start_acquisition_trigger() 
                 #we need to put in the packet delay to improve reliability
                 self._sensors[sname].cam.set_integer_feature("GevSCPD",4000)
                 #and set sync mode for image capture 
                 self._sensors[sname].cam.set_string_feature("SyncMode", "Sync")
+
+                self._sensors[sname].cam.set_string_feature("AcquisitionMode", "SingleFrame") #no acquisition limits
+                self._sensors[sname].cam.set_string_feature("TriggerSource", "Software") #wait for trigger t acquire image
+                self._sensors[sname].cam.set_string_feature("TriggerMode", "On") #Not documented but necesary
+
 
             self.last_run['time'] = datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S")
 
@@ -110,7 +115,7 @@ class JAI_AD80GE(PoweredTask):
             self.logger.error( traceback.format_exc())
             self.last_run['success'] = False
             self.last_run['error_msg'] = str(e)
-            raise e 
+            return
         self.logger.info("JAI_AD80GE ran its task")
         self.last_run['success'] = True     
         
@@ -147,6 +152,7 @@ class JAI_AD80GE(PoweredTask):
                 sensor_status["Gain"]=sensor.cam.get_gain()
                 sensor_status["Frame rate"]=sensor.cam.get_frame_rate()
                 sensor_status["Payload"]=sensor.cam.get_payload()
+                sensor_status['SyncMode']=sensor.cam.get_string_feature("SyncMode")
                 sensor_status["AcquisitionMode"]=sensor.cam.get_string_feature("AcquisitionMode")
                 sensor_status["TriggerSource"]=sensor.cam.get_string_feature("TriggerSource")
                 sensor_status["TriggerMode"]=sensor.cam.get_string_feature("TriggerMode")
@@ -212,46 +218,7 @@ class JAI_AD80GE(PoweredTask):
                 pass
             self.logger.error( str(e))
             self.logger.error( traceback.format_exc())
-            
-    def get_configure_properties(self):
-        return [
-            ('sensors',"Sensor List" ,"List with {name=sensorname, mac=###}"),
-            ('relay_name',"Relay Plugin" ,"Relay Plugin to use for power control."),
-            ('relay_delay', "Delay (Sec)", "Number of seconds to wait after enabling Relay."), 
-            ('relay_port',"Port Number", "Port on Relay to toggle for control.")
-        ]
-        
-    def get_run_properties(self):    
-        '''
-                    date_pattern (opt) : passed as strftime format
-                                        used for filename YYYY-MM-DDTHHMMSS
-                    file_prefix (opt) : Base path and name for filename ./img
-                    image_type (opt) : Format to save image as. Tiff default
-                    pixelformats (opt) : list of image format to capture for each sensor
-                    sequence (opt): list of dictionaries with the following:
-                                    each dict given will be a numbered image
-                    ExposureTimeAbs (opt) : image exposure time in uSec
-                                            125000 default
-                    Gain (opt) : 0-26db gain integer steps 0 default
-                    Height (opt) : requested image height max default
-                    Width (opt) : requested image width max default
-                    OffsetX (opt) : requested image x offset 0 default
-                    OffsetY (opt) : requested image y offest 0 default
-        '''
-        return [
-            ("date_pattern","Date Format","Used in filenaming, Default is YYYY-MM-DDTHHMMSS."),
-            ("file_name","File Location", "Base Path and prefix for filenaming. Default: /tmp/img_."),
-            ("image_type","Image Format" ,"Image format to save as. Default: tif." ),
-            ("pixel_formats","Pixel Formats" ,"List of image formats for each sensor: { name=sensor, pixel_format=format}" ),
-            ("sequence","Sequence" , "A set of settings to capture a sequence of images." ), 
-            ("exposure_time","Exposure Time","uSec of Exposure. Default: 125000."),
-            ("gain","Gain" ,"0-26dB gain, Default: 0." ),
-            ("height","Height" ,"Image height, Default: Max." ),
-            ("width","Width" ,"Image width, Default: Max." ),
-            ("offset_x","OffsetX" ,"Image offset in x pixels. Default 0px." ),
-            ("offset_y","OffsetY" ,"Image offset in y pixels. Default 0px." )     
-        ]
-   
+              
     def start(self):       
         if not self._started: 
             self.logger.info("JAI_AD80GE is powering up")
@@ -303,6 +270,7 @@ class JAI_AD80GE(PoweredTask):
                                       kwargs.get("offset_y", 0),                                      
                                       kwargs.get("width", max_width),
                                       kwargs.get("height", max_height))
+                sensor.cam.create_buffers(1)
                                       
             if self._sensors['rgb'].cam.use_exposure_time:
                 exp = self._sensors['rgb'].cam.get_exposure_time()
@@ -318,14 +286,17 @@ class JAI_AD80GE(PoweredTask):
             
             # we retry frame grabs if they are incomplete: status will report non-zero for a problem. 
             while ( (rgb_status or nir_status) and tries):             
-                self._sensors['rgb'].cam.trigger()
+
+                self._sensors['rgb'].cam.start_acquisition()
+                self._sensors['nir'].cam.start_acquisition()
+                self._sensors['rgb'].cam.trigger()                
                 rgb_status, rgb_data = self._sensors['rgb'].cam.get_frame()
                 nir_status, nir_data = self._sensors['nir'].cam.get_frame()
                 tries-=1
                 if rgb_status:
-                    self.logger.error("Requesting new frame-set. Corrupted RGB frame. RGB_status: %d" %(rgb_status))    
+                    self.logger.error("Requesting new frame-set. Problem RGB frame. RGB_status: %d" %(rgb_status))    
                 if nir_status:
-                    self.logger.error("Requesting new frame-set. Corrupted RGB frame. NIR_status: %d" %(nir_status))
+                    self.logger.error("Requesting new frame-set. Problem NIR frame. NIR_status: %d" %(nir_status))
                 if tries==0:
                     self.logger.error("Giving up on frame-set. 10 attempts at capturing clean frames.")
             #make our filenames
