@@ -387,7 +387,7 @@ class AISApp(object):
         
         #add Scheduling Menu
         self.ui.add_view(JobView(Job,db.session, name='Tasks'))
-        self.ui.add_view(FileAdmin(config.FILESTORE,name="Data"))
+        self.ui.add_view(FileAdmin(config.DISKSTORE,name="Data"))
         
         #sqlloghdlr created for plugin use
         sqlloghdlr = SQLAlchemyHandler()

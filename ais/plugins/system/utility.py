@@ -12,7 +12,7 @@ import subprocess,datetime,re,os,glob
 from tzlocal import reload_localzone
 from collections import OrderedDict
 from flask import Markup
-import StringIO,csv
+import StringIO,csv,re
 from flask import send_file
 
 class Utility(Task):
@@ -31,10 +31,7 @@ class Utility(Task):
                     l = line.rstrip().split()
                     fstabs.append(l)
         return fstabs
-        
-    def _get_blkids(self,device=None):
-        pass
-    
+            
     def _get_disk_info(self):
        disk_info = self._get_part_info()
        mounts = self._get_mount_info()
@@ -61,7 +58,7 @@ class Utility(Task):
                 info = line.split(" ")
                 persist=False
                 for perm in fstabs:
-                    print "mount dir: %s fstab dir: %s" %(info[2],perm[1])
+                    #print "mount dir: %s fstab dir: %s" %(info[2],perm[1])
                     if info[2] == perm[1]:
                         persist = True
                         fstab_dev = perm[0]
@@ -82,10 +79,9 @@ class Utility(Task):
                     'persist': persist
                 }
                 if persist:
-                    mounts[info[0]]['fstab_dev']=fstab_dev
-                    
-        return mounts        
-            
+                    mounts[info[0]]['fstab_dev']=fstab_dev                   
+        return mounts 
+             
     def _get_part_info(self):
         cmd = "sudo parted -lm"
         disk_list = list()

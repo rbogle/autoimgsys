@@ -16,7 +16,8 @@ HOSTNAME = socket.gethostname()
 
 SECRET_KEY = os.urandom(24)
 
-FILESTORE = '/mnt/data'
+FILESTORE = '/mnt/data' #where module mount their data directories
+DISKSTORE = '/mnt' # where disks cna be mounted. 
 
 LOGGING = {
     'version':1,

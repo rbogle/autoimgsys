@@ -10,7 +10,7 @@
 <!-- tab nav -->
 <ul class="nav nav-tabs" role="tablist" id="myTab">
   {% for (id,url,label) in panels %}
-  <li{{ " class='active'" if id=='sys' else ""}}><a href="#{{id}}" role="tab" data-toggle="tab">{{label}}</a></li>
+  <li class="{{ 'active' if id=='sys' else "" }}"><a href="#{{id}}" role="tab" data-toggle="tab">{{label}}</a></li>
   {% endfor %}  
 </ul>
 <!-- tab panels -->

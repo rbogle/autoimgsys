@@ -2,7 +2,7 @@
 from flask.ext.admin import expose
 from flask import Markup, jsonify
 from flask.ext.admin.form import BaseForm
-from wtforms import SelectField
+from wtforms import SelectField,HiddenField,BooleanField,StringField
 from flask.ext.admin.form.fields import DateTimeField
 import pytz
 from tzlocal import reload_localzone
@@ -16,10 +16,15 @@ def get_tzlist():
     return tzlist
 
 class DateTimeForm(BaseForm):
-
+    id = HiddenField()
     datetime = DateTimeField("New Date and Time")
     timezone = SelectField("Timezone", choices = get_tzlist(), default= lambda: reload_localzone().zone)
-            
+
+class PartitionForm(BaseForm):
+    id = HiddenField()
+    mnt_pt = StringField("Mount Point", description="Mount device on this directory in data", default="Temp" )    
+    persist = BooleanField("Persist", description="Make this mount persist accross reboots", default=False)
+     
     
 class System(utility.Utility):
     
@@ -44,9 +49,16 @@ class System(utility.Utility):
         
         #datetime form submitted
         if h.is_form_submitted():
-            flash("Date Time has been configured")
-            self._conf_datetime(request.form)          
-
+            form_data = request.form
+            form_type = form_data.get('id')
+            
+            if form_type == "datetime":
+                flash("Date Time has been configured")
+                self._conf_datetime(form_data)          
+            if form_type == "partition":
+                flash("Mounting Partition")
+                pass            
+            
         #handle actions
         if action is not None:
             if action == "get_events":
@@ -85,7 +97,7 @@ class System(utility.Utility):
         if name == 'datetime':
             return self.get_datetime_modal()
         if name == 'partition':
-            return self.get_partition_modal(kwargs)
+            return self.get_partition_modal(**kwargs)
     
     def get_widgets(self):
         return [
@@ -162,15 +174,16 @@ class System(utility.Utility):
         
     def get_datetime_modal(self):
         title ='Set System Date and Time'
-        f = DateTimeForm()
+        f = DateTimeForm(id="datetime")
         ru = "/system"
-        body = self.render(self.path+'/datetime.html', dtform=f, return_url =ru)
+        body = self.render(self.path+'/modal_form.html', aform=f, return_url =ru)
         url = ""
         return jsonify({ 'title': title, 'body': body, 'url': url})
 
     def get_partition_modal(self, **kwargs):
         title = "Edit Partition Mounting"
-        body=""
+        f = PartitionForm(id="partition")
+        body=self.render(self.path+"/modal_form.html", aform=f, return_url="/system")
         url=""
         return jsonify({'title':title, 'body':body, 'url': url})
     
