@@ -2,7 +2,7 @@
     <div class="panel-heading">Storage Configuration</div>
     <div class="panel-body">
     <h4> Available Disks and Partitions</h4>
-       {% for disk in disks %}
+       {% for name,disk in disks.items() %}
         <table class="table table-bordered table-responsive">
             <tr class="active"><th></th><th>Disk Name</th><th>Disk Device</th><th>Disk Size</th></tr>
              <tr>
@@ -27,7 +27,7 @@
                             {% if info['dir'] == '/' %}
                                 <span class="glyphicon glyphicon-lock text-warning"></span>
                             {% else %}
-                                <a id='partition'class="icon" data-toggle='modal' data-target='#sys-modal''><span class="glyphicon glyphicon-pencil"></span></a>
+                                <a id='partition' class="icon" data-toggle='modal' data-target='#sys-modal' data-args="partition:{{part}}{% if info['mounted'] %},mounted:True{% endif %}{% if info['persist'] %},persist:True{% endif %}"><span class="glyphicon glyphicon-pencil"></span></a>
                             {% endif %}
                         </td>
                         <td><span class="glyphicon {{'glyphicon-ok text-success' if info['mounted'] else 'glyphicon-wrench text-warning'}}"></span></td>

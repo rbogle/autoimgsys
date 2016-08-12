@@ -1,8 +1,21 @@
 {% import 'admin/lib.html' as lib with context %}
+{% import 'admin/form_lib.html' as flib with context %}
 
 {% call lib.form_tag(dtform) %}
-    {{ lib.render_form_fields(aform, form_opts=opts) }}
-    {{ lib.render_form_buttons(return_url) }}
+    {{ flib.do_form_fields(aform, form_opts=opts) }}
+    <div class="form-group">
+      <div class="col-md-offset-2 col-md-10 submit-row">
+	<input type="submit" class="btn btn-primary" value="{{ _gettext('Submit') }}" />
+	{% if extra %}
+	{{ extra }}
+	{% endif %}
+	{% if cancel_url %}
+	<a href="{{ cancel_url }}" class="btn btn-default" role="button">{{ _gettext('Cancel') }}</a>
+       {% else %}
+       <a class="btn btn-default" data-dismiss="modal" role="button">{{ _gettext('Cancel') }}</a>
+	{% endif %}
+      </div>
+    </div>
 {% endcall %}
 
 {{ lib.form_js() }}

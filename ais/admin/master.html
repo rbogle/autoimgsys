@@ -57,5 +57,10 @@ $( document ).on( "active.idleTimer", function(event, elem, obj, triggerevent){
         update_time();
 });
 
+
+$(".alert-dismissable").fadeTo(10000,500).slideUp(500,function(){
+    $(".alert-dismissable").alert('close');
+});
+
 </script>
 {% endblock %}

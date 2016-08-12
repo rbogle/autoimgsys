@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from flask.ext.admin import expose
 from flask import Markup, jsonify
+from ais.ui import config
 from flask.ext.admin.form import BaseForm
 from wtforms import SelectField,HiddenField,BooleanField,StringField
 from flask.ext.admin.form.fields import DateTimeField
@@ -22,9 +23,11 @@ class DateTimeForm(BaseForm):
 
 class PartitionForm(BaseForm):
     id = HiddenField()
-    mnt_pt = StringField("Mount Point", description="Mount device on this directory in data", default="Temp" )    
-    persist = BooleanField("Persist", description="Make this mount persist accross reboots", default=False)
-     
+    part = HiddenField()
+    device = StringField("Device", description="The device to mount")
+    mnt_pt = StringField("Mount", description="Mount device on this directory in the datastore: "+config.DISKSTORE, default="Temp" )    
+    persist = BooleanField("Persist", description="Make this mount persist accross reboots?", default=False)
+    mounted = BooleanField("Mounted", default=False, description="Mount this directory now?")
     
 class System(utility.Utility):
     
@@ -45,9 +48,10 @@ class System(utility.Utility):
         
         action = request.args.get('action', None)
         modal = request.args.get('modal', None)
+        active_tab = request.args.get('tab', 'sys')
         args = request.args
-        
-        #datetime form submitted
+     
+        #some form submitted
         if h.is_form_submitted():
             form_data = request.form
             form_type = form_data.get('id')
@@ -56,8 +60,8 @@ class System(utility.Utility):
                 flash("Date Time has been configured")
                 self._conf_datetime(form_data)          
             if form_type == "partition":
-                flash("Mounting Partition")
-                pass            
+                flash("Changing Mounting of %s on %s/%s" %(form_data.get('part'),config.DISKSTORE,form_data.get('mnt_pt')))
+                #self._change_mounts(form_data)                           
             
         #handle actions
         if action is not None:
@@ -76,7 +80,7 @@ class System(utility.Utility):
  
         #return modal dialog     
         if modal is not None:
-            return self.get_widget_modal(modal, **args)
+            return self.get_widget_modal(modal, args)
         #return default page    
         p = [
             ('sys',self.path+"/sys_panel.html","System"),
@@ -87,9 +91,10 @@ class System(utility.Utility):
 
         w = self.get_widgets()
         i = self._get_sys_info()
-        return self.render(self.view_template, info=i, widgets=w, panels=p, disks=d)
+        
+        return self.render(self.view_template, info=i, widgets=w, panels=p, disks=d, active=active_tab)
     
-    def get_widget_modal(self, name, **kwargs):
+    def get_widget_modal(self, name, kwargs):
         if name == 'reboot':
             return self.get_reboot_modal()
         if name == 'reset':
@@ -97,7 +102,7 @@ class System(utility.Utility):
         if name == 'datetime':
             return self.get_datetime_modal()
         if name == 'partition':
-            return self.get_partition_modal(**kwargs)
+            return self.get_partition_modal(kwargs)
     
     def get_widgets(self):
         return [
@@ -180,10 +185,21 @@ class System(utility.Utility):
         url = ""
         return jsonify({ 'title': title, 'body': body, 'url': url})
 
-    def get_partition_modal(self, **kwargs):
+    def get_partition_modal(self, args):
         title = "Edit Partition Mounting"
         f = PartitionForm(id="partition")
-        body=self.render(self.path+"/modal_form.html", aform=f, return_url="/system")
-        url=""
-        return jsonify({'title':title, 'body':body, 'url': url})
+        f.device.data= args.get('partition', '/dev/null') #disabled doesnt come back
+        f.part.data = args.get('partition', '/dev/null') #hidden comes back
+        f.mounted.data = args.get('mounted', False)
+        f.mnt_pt.data = args.get('mnt_pt', 'temp')
+        f.persist.data = args.get('persist', False)
+        
+        o={'widget_args':{
+                'device':{
+                    'disabled':'true'
+                }
+           }
+        }
+        body=self.render(self.path+"/modal_form.html", aform=f, opts=o)
+        return jsonify({'title':title, 'body':body, 'url':""})
     

@@ -8,9 +8,7 @@
     <label for="{{ field.id }}" class="col-sm-2 control-label">{{ field.label.text }}
         {% if h.is_required_form_field(field) %}
           <strong style="color: red">&#42;</strong>
-        {%- else -%}
-          &nbsp;
-        {%- endif %}
+        {% endif %}
     </label>
       {% if field.widget.input_type!='checkbox'%}
         <div class="col-sm-8">
@@ -43,11 +41,12 @@
 
     {% for f in form if f.widget.input_type != 'hidden' %}
       {% if form_opts %}
-        {% set kwargs = form_opts.get(f.name, {}) %}
+        {% set kwargs = form_opts.widget_args.get(f.name, {}) %}
       {% else %}
         {% set kwargs = {} %}
       {% endif %}
       {{field_group(f, kwargs) }}
     {% endfor %}
+
 
 {% endmacro%}
