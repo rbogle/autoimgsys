@@ -21,7 +21,7 @@
             <table class="table table-bordered table-responsive" >
                 <tr class="active"><th></th><th>Mounted</th><th>Partition</th><th>Mount Point</th><th>Size</th><th>% Used</th><th>File System</th><th>Persistent</th></tr>
                 {% for part,info in disk['parts'].iteritems() %}
-                {% if ( info['type'] != "") and ( 'swap' not in info['type']) %}
+                {% if ( 'swap' not in info['type']) %}
                     <tr>
                         <td>
                             {% if info['dir'] == '/' %}

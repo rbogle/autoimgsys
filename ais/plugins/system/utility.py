@@ -13,8 +13,22 @@ from tzlocal import reload_localzone
 from collections import OrderedDict
 from flask import Markup, flash
 import StringIO,csv,re
-from flask import send_file
+from flask import send_file 
 
+class CalledProcess(object):
+        
+    def __init__(self, **kwargs):
+        self.cmd = kwargs.get('cmd', "")
+        self.returncode= kwargs.get('returncode', 0)
+        self.output= kwargs.get('output', "")
+    
+    def cast(self, CalledProcessError):
+
+        self.cmd = CalledProcessError.cmd
+        self.output = CalledProcessError.output
+        self.returncode = CalledProcessError.returncode
+    
+    
 class Utility(Task):
     
     def __init__(self, **kwargs):
@@ -36,7 +50,7 @@ class Utility(Task):
         cmd="sudo blkid"
         blkids=dict()
         try:
-            outp = subprocess.check_output(cmd.split()).splitlines()
+            outp = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).splitlines()
         except subprocess.CalledProcessError as cpe:
             self.logger.error(cpe.output) 
             return None
@@ -62,14 +76,14 @@ class Utility(Task):
         # first find all the currently mounted directories in userspace
         cmd = "mount -l -t ext2,ext3,ext4,vfat,fuseblk,hfsplus"
         try:
-            outp = subprocess.check_output(cmd.split()).splitlines()
+            outp = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).splitlines()
         except subprocess.CalledProcessError as cpe:
             self.logger.error(cpe.output) 
             return None
         #get fstab info. 
         fstabs = self._read_fstab()
         blkids = self._get_blkids()
-        mounts = dict()
+        mounts = OrderedDict()
         #now get info for each mount pt. and check if its in fstab. 
         if outp is not None:
             for line in outp:
@@ -81,9 +95,10 @@ class Utility(Task):
 
                 try:
                     cmd="df -h %s" % info[2]
-                    usage =subprocess.check_output(cmd.split()).splitlines()[1].split()
+                    usage =subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).splitlines()[1].split()
                 except subprocess.CalledProcessError as cpe:
-                    self.logger.error(cpe.output)                
+                    self.logger.error(cpe.output) 
+                    usage= ["df error"]*5 #This shouldn't be needed but just in case.
                 mounts[info[0]]={
                     'part': info[0],
                     'dir': info[2],
@@ -103,10 +118,10 @@ class Utility(Task):
              
     def _get_part_info(self):
         cmd = "sudo parted -lm"
-        disk_list = dict()
+        disk_list = OrderedDict()
         #disk_list = list()
         try:
-            outp = subprocess.check_output(cmd.split()).splitlines()
+            outp = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).splitlines()
         except subprocess.CalledProcessError as cpe:
             self.logger.error(cpe.output) 
             return None
@@ -176,7 +191,7 @@ class Utility(Task):
         db_path = config.DATABASE_PATH
         
         try:
-            pid = subprocess.check_output(['pgrep', 'ais_service'])
+            pid = subprocess.check_output(['pgrep', 'ais_service'], stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as cpe:
             self.logger.error(cpe.output)
             return         
@@ -187,7 +202,7 @@ class Utility(Task):
         #now hup the service to restart
         try:
             #self.logger.debug("Doing: %s" %cmd)
-            subprocess.check_output(cmd.split())
+            subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as cpe:
             exit()
             
@@ -196,7 +211,7 @@ class Utility(Task):
         self.logger.info("System Module: Reboot Requested")
         command = "sudo shutdown -r now"
         try:
-            subprocess.check_output(command.split())
+            subprocess.check_output(command.split(), stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as cpe:
             self.logger.error(cpe.output)
             
@@ -216,7 +231,7 @@ class Utility(Task):
     def _set_datetime(self, datestr):
         cmd = "sudo date --set %s" %datestr
         try:
-           output= subprocess.check_output(cmd.split())
+           output= subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT)
            self.logger.info("DateTime set to: %s" %output)
         except subprocess.CalledProcessError as cpe:
             self.logger.error(cpe.output)
@@ -233,7 +248,7 @@ class Utility(Task):
             outf.write(tzname+'\n')        
         try:        
             for c in cmds:
-                subprocess.check_output(c.split())
+                subprocess.check_output(c.split(), stderr=subprocess.STDOUT)
             self.logger.info("Timezone Changed to %s"%tzname)
         except subprocess.CalledProcessError as cpe:
             self.logger.error(cpe.output)
@@ -304,4 +319,30 @@ class Utility(Task):
         
     def _mkfs(self, device, fstype):
         pass
-       
+      
+    def _edit_fstab(self, part, dest ):
+        pass
+    
+    def _mount(self, device, dir=None, options=None):
+        cmd = "sudo mount %s %s" %(device,dir)
+        if options:
+            cmd += "-o %s" %options
+        cp= CalledProcess(cmd= cmd)
+        try:
+           cp.output = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT)
+           self.logger.info("Mounted %s to: %s" %(device,dir))
+        except subprocess.CalledProcessError as cpe:
+            self.logger.error("Mount error: %s" %cpe.output)
+            cp.cast(cpe)
+        return cp
+        
+    def _umount(self, mount):
+        cmd = "sudo umount %s" %(mount)
+        cp=CalledProcess(cmd=cmd)
+        try:
+           cp.output = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT)
+           self.logger.info("UnMounted %s" %(mount))
+        except subprocess.CalledProcessError as cpe:
+            self.logger.error(cpe.output)  
+            cp.cast(cpe)
+        return cp
