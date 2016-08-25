@@ -59,18 +59,25 @@ class Utility(Task):
             blkids[info[0].translate(None,':')]=info[1].translate(None,'\"')
         return blkids
             
-    def _get_disk_info(self):
-       disk_info = self._get_part_info()
+    def _get_device_info(self, device=None):
+       device_info = self._get_part_info()
        mounts = self._get_mount_info()
-       blkids = self._get_blkids()
-       for name,disk in disk_info.iteritems():
+       for name,disk in device_info.iteritems():
            for pname,pinfo in disk['parts'].iteritems():
                if mounts.has_key(pname):
                    pinfo.update(mounts[pname])
                    pinfo['mounted']=True
                else:
                    pinfo['mounted']=False
-       return disk_info
+       # only return partition or disk
+       if device is not None:
+           disk = device.translate(None, '0123456789')
+           if disk in device_info:
+               if (disk != device):        
+                   device_info = device_info[disk]['parts'].get(device, None)
+               else:
+                   device_info = device_info[disk]
+       return device_info
 
     def _get_mount_info(self):
         # first find all the currently mounted directories in userspace
@@ -92,7 +99,6 @@ class Utility(Task):
                 if info[2] in fstabs:
                     persist=True
                     fstab_dev = fstabs[info[2]]
-
                 try:
                     cmd="df -h %s" % info[2]
                     usage =subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).splitlines()[1].split()
@@ -272,40 +278,22 @@ class Utility(Task):
         sio.seek(0)
         return send_file(sio, attachment_filename="AIS_Events.csv", as_attachment=True)
         
-    def _change_mounts(self, args):
+    def _change_mount(self, args):
         for arg in args:
             self.logger.debug("%s -> %s" %(arg, args[arg]))
-        part = args.get('partition', None)
-        mnt_pt = args.get('mnt_pt', None)
-        persist = args.get('persist', None)
-        mounted = args.get('mounted', False)
-        mnt_info = self._get_mount_info().get(part, None)
-        path = config.DATASTORE+mnt_pt
-        if not mounted and not mnt_info: # create new mount
-           # mkfs if not formatted
-           # mkdir if not exists
-           if not self._mkdir(path):
-               flash("invalid path: %s" %path)
-               return
-           # mount to dir
-           # add or remove from fstab
-        elif mounted and not mnt_info: # create new mount 
-            pass
+        fm_part = args.get('partition', None)
+        fm_mnt_pt = args.get('mnt_pt', None)
+        fm_mk_persist = args.get('persist', False)
+        fm_mk_mnt = args.get('mount', False)
+        mnt_info = self._get_device_info(part)
+        if mnt_info:
+            dev_mnt = mnt_info.get('mounted', False) 
+            dev_persist = mnt_info.get('persist', False)
+            dev_uuid = mnt_info.get('uuid', None)
+            dev_mnt_pt = mnt_info.get('dir', None)
 
-        elif not mounted and mnt_info:  #unmounting exsiting
-            pass
+        path = config.DATASTORE+fm_mnt_pt
 
-
-        
-        else:  # not mounted but mnt_info = unmounting 
-        
-        # partition is mounted somewhere
-           # if mnt_pt != current mnt_pt
-               # umount partition 
-               # mkdir if not exisits
-               # mount to dir
-           # add or remove from fstab
-            pass
         
     def _mkdir(self, path):
         rval=True

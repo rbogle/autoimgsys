@@ -27,7 +27,7 @@ class PartitionForm(BaseForm):
     device = StringField("Device", description="The device to mount")
     mnt_pt = StringField("Mount", description="Mount device on this directory in the datastore: "+config.DISKSTORE, default="Temp" )    
     persist = BooleanField("Persist", description="Make this mount persist accross reboots?", default=False)
-    mounted = BooleanField("Mounted", default=False, description="Mount this directory now?")
+    dmount = BooleanField("Mount Now", default=False, description="Mount this directory now?")
     
 class System(utility.Utility):
     
@@ -87,7 +87,7 @@ class System(utility.Utility):
             ('dsk',self.path+"/dsk_panel.html","Storage"),
             ('net',self.path+"/net_panel.html","Networking")
         ]
-        d = self._get_disk_info()
+        d = self._get_device_info()
 
         w = self.get_widgets()
         i = self._get_sys_info()
