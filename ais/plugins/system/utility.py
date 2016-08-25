@@ -281,19 +281,25 @@ class Utility(Task):
     def _change_mount(self, args):
         for arg in args:
             self.logger.debug("%s -> %s" %(arg, args[arg]))
-        fm_part = args.get('partition', None)
-        fm_mnt_pt = args.get('mnt_pt', None)
+            
+        # input args
+        part = args.get('partition', None)
+        fm_mnt_pt = args.get('mnt_pt', "")
         fm_mk_persist = args.get('persist', False)
         fm_mk_mnt = args.get('mount', False)
+        fm_fs_type = args.get('fstype', "")
+        # device args
         mnt_info = self._get_device_info(part)
-        if mnt_info:
-            dev_mnt = mnt_info.get('mounted', False) 
-            dev_persist = mnt_info.get('persist', False)
-            dev_uuid = mnt_info.get('uuid', None)
-            dev_mnt_pt = mnt_info.get('dir', None)
+        dev_mntd = mnt_info.get('mounted', False) 
+        dev_persist = mnt_info.get('persist', False)
+        dev_uuid = mnt_info.get('uuid', "")
+        dev_mnt_pt = mnt_info.get('dir', "")
+        dev_fs_type = mnt_info.get('type', "")
 
-        path = config.DATASTORE+fm_mnt_pt
-
+        mount_path = config.DATASTORE+fm_mnt_pt
+        if dev_fs_type == "":
+            self._mkfs(part, fm_fs_type)
+        
         
     def _mkdir(self, path):
         rval=True
@@ -304,9 +310,19 @@ class Utility(Task):
                 rval=False    
                 self.logger.error(e.output)
         return rval
-        
+    
+    # format device with fstype and return uuid string.     
     def _mkfs(self, device, fstype):
-        pass
+        
+        cmd = "sudo mkfs -t %s %s" %(fstype, device)
+        cp= CalledProcess(cmd= cmd)
+        try:
+           cp.output = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT)
+           self.logger.info("mkfs %s to: %s" %(device,fstype))
+        except subprocess.CalledProcessError as cpe:
+            self.logger.error("Mount error: %s" %cpe.output)
+            cp.cast(cpe)
+        return cp
       
     def _edit_fstab(self, part, dest ):
         pass
