@@ -27,7 +27,9 @@
                             {% if info['dir'] == '/' %}
                                 <span class="glyphicon glyphicon-lock text-warning"></span>
                             {% else %}
-                                <a id='partition' class="icon" data-toggle='modal' data-target='#sys-modal' data-args="partition:{{part}}{% if info['mounted'] %},mounted:True{% endif %}{% if info['persist'] %},persist:True{% endif %}"><span class="glyphicon glyphicon-pencil"></span></a>
+                                <a id='partition' class="icon" data-toggle='modal' data-target='#sys-modal' 
+                                data-args="partition:{{part}}{% if info['mounted'] %},mounted:True{% endif %}{% if info['persist'] %},persist:True{% endif %},mnt_pt:{{info['dir']}},fs_type:{{info['type']}}">
+                                <span class="glyphicon glyphicon-pencil"></span></a>
                             {% endif %}
                         </td>
                         <td><span class="glyphicon {{'glyphicon-ok text-success' if info['mounted'] else 'glyphicon-wrench text-warning'}}"></span></td>

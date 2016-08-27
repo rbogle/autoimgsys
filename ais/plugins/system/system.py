@@ -25,9 +25,11 @@ class PartitionForm(BaseForm):
     id = HiddenField()
     part = HiddenField()
     device = StringField("Device", description="The device to mount")
-    mnt_pt = StringField("Mount", description="Mount device on this directory in the datastore: "+config.DISKSTORE, default="Temp" )    
+    mnt_pt = StringField("Mount", description="Mount device on this directory in the datastore: "+config.DISKSTORE, default="tmp" )    
+    fstype = SelectField("Filesystem", description="Filesystem Format of disk", choices=[("ext4","Linux: ext4"),("vfat","Universal: FAT32"), ("ntfs","Windows: NTFS")])    
     persist = BooleanField("Persist", description="Make this mount persist accross reboots?", default=False)
-    dmount = BooleanField("Mount Now", default=False, description="Mount this directory now?")
+    mount = BooleanField("Mount Now", default=False, description="Mount this directory now?")
+    
     
 class System(utility.Utility):
     
@@ -60,8 +62,8 @@ class System(utility.Utility):
                 flash("Date Time has been configured")
                 self._conf_datetime(form_data)          
             if form_type == "partition":
-                flash("Changing Mounting of %s on %s/%s" %(form_data.get('part'),config.DISKSTORE,form_data.get('mnt_pt')))
-                #self._change_mounts(form_data)                           
+                flash("Changing Mount for %s on %s" %(form_data.get('part'),form_data.get('mnt_pt')))
+                self._change_mount(form_data)                       
             
         #handle actions
         if action is not None:
@@ -190,8 +192,12 @@ class System(utility.Utility):
         f = PartitionForm(id="partition")
         f.device.data= args.get('partition', '/dev/null') #disabled doesnt come back
         f.part.data = args.get('partition', '/dev/null') #hidden comes back
-        f.mounted.data = args.get('mounted', False)
-        f.mnt_pt.data = args.get('mnt_pt', 'temp')
+        f.mount.data = args.get('mounted', False)
+        mnt_pt = args.get('mnt_pt', 'tmp')
+        if mnt_pt == "":
+            mnt_pt='tmp'
+        f.mnt_pt.data = mnt_pt
+        f.fstype.data = args.get('fs_type', None)
         f.persist.data = args.get('persist', False)
         
         o={'widget_args':{
