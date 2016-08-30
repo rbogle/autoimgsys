@@ -5,10 +5,20 @@ from ais.ui import config
 from flask.ext.admin.form import BaseForm
 from wtforms import SelectField,HiddenField,BooleanField,StringField
 from flask.ext.admin.form.fields import DateTimeField
-import pytz
+import pytz,os,os.path
 from tzlocal import reload_localzone
 import ais.plugins.system.utility as utility
 
+def get_data_mnts():
+    dirs = os.listdir(config.DISKSTORE)
+    choices = []
+    for d in dirs:
+        d= config.DISKSTORE+"/"+d
+        if os.path.isdir(d):
+            choices.append((d,d))  
+    choices.sort()
+    return choices
+    
 def get_tzlist():
     tzlist =list()
     tzs = pytz.common_timezones
@@ -25,7 +35,7 @@ class PartitionForm(BaseForm):
     id = HiddenField()
     part = HiddenField()
     device = StringField("Device", description="The device to mount")
-    mnt_pt = StringField("Mount", description="Mount device on this directory in the datastore: "+config.DISKSTORE, default="tmp" )    
+    mnt_pt = SelectField("Mount", description="Mount device on this directory in the datastore: "+config.DISKSTORE, choices=get_data_mnts())   
     fstype = SelectField("Filesystem", description="Filesystem Format of disk", choices=[("ext4","Linux: ext4"),("vfat","Universal: FAT32"), ("ntfs","Windows: NTFS")])    
     persist = BooleanField("Persist", description="Make this mount persist accross reboots?", default=False)
     mount = BooleanField("Mount Now", default=False, description="Mount this directory now?")
@@ -192,11 +202,9 @@ class System(utility.Utility):
         f = PartitionForm(id="partition")
         f.device.data= args.get('partition', '/dev/null') #disabled doesnt come back
         f.part.data = args.get('partition', '/dev/null') #hidden comes back
-        f.mount.data = args.get('mounted', False)
-        mnt_pt = args.get('mnt_pt', 'tmp')
-        if mnt_pt == "":
-            mnt_pt='tmp'
-        f.mnt_pt.data = mnt_pt
+        f.mount.data = args.get('mounted', False) 
+        f.mnt_pt.choices = get_data_mnts()
+        f.mnt_pt.data = args.get('mnt_pt', '')
         f.fstype.data = args.get('fs_type', None)
         f.persist.data = args.get('persist', False)
         

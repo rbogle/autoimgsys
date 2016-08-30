@@ -202,7 +202,7 @@ class Utility(Task):
         try:
             pid = subprocess.check_output(['pgrep', 'ais_service'], stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as cpe:
-            self.logger.error(cpe.output)
+            self.logger.error("Could not find pid of ais_service: %s" % cpe.output)
             return         
         cmd = "sudo kill -HUP %s" %pid
         #delete dbs         
@@ -213,6 +213,7 @@ class Utility(Task):
             #self.logger.debug("Doing: %s" %cmd)
             subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as cpe:
+            self.logger.error(cpe.output)
             exit()
             
 # TDDO make this async and return     
