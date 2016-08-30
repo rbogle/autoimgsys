@@ -93,14 +93,15 @@ class System(utility.Utility):
         #return modal dialog     
         if modal is not None:
             return self.get_widget_modal(modal, args)
+            
         #return default page    
         p = [
             ('sys',self.path+"/sys_panel.html","System"),
             ('dsk',self.path+"/dsk_panel.html","Storage"),
             ('net',self.path+"/net_panel.html","Networking")
         ]
+        
         d = self._get_device_info()
-
         w = self.get_widgets()
         i = self._get_sys_info()
         

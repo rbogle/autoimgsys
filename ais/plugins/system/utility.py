@@ -44,13 +44,13 @@ class Utility(Task):
         fstabs = dict()
         with open("/etc/fstab") as f:
             for line in f:
-                if not line.strip().startswith("#"):
+                if not re.match("^[#\n].*", line):
                     l = line.rstrip().split()
                     fstabs[l[0]]=l[1]
         return fstabs
         
     def _get_blkids(self):
-        cmd="sudo blkid"
+        cmd="sudo blkid -s UUID"
         blkids=dict()
         try:
             outp = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).splitlines()
@@ -71,7 +71,7 @@ class Utility(Task):
            for pname,pinfo in disk['parts'].iteritems():
                if pname in blkids:
                    pinfo['uuid']=blkids[pname]   
-                   if pinfo['uuid'] in fstabs:
+                   if pinfo['uuid'] in fstabs or pname in fstabs:
                        pinfo['persist']=True
                        pinfo['fstab_dev']=pinfo['uuid']   
                if mounts.has_key(pname):
@@ -438,10 +438,11 @@ class Utility(Task):
                 
             line[1] = dest
             line[2] = fstype
+            # fix options for fat uid/gid and make nobootwait default so boot dont get hung waiting for usbs.
             if fstype == 'vfat':
-                line[3]="uid=%s,gid=%s" %(os.getuid(),os.getgid())
+                line[3]="nobootwait,uid=%s,gid=%s" %(os.getuid(),os.getgid())
             else:
-                line[3] = 'defaults'
+                line[3] = 'nobootwait'
             line[4] = '0'
             line[5] = '0'
             fstabs.append('\t'.join(line)+'\n')
