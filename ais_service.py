@@ -445,7 +445,7 @@ class AISApp(object):
         #self.ui.add_view(ModelView(Schedule,db.session, name = 'Task Schedules',category='Settings'))
         
         #add Advanced/Admin Menu
-        # TODO needs to have auth module to lockout
+        # TODO needs to have user auth module to protect
         #self.ui.add_view(ModelView(User,db.session, name='Users', category='Admin')) 
         self.ui.add_view(EventView(Event,db.session,name='Event Logs', category='Admin'))
         self.ui.add_view(PluginView(Plugin,db.session,name='Module Admin', category='Admin'))         
