@@ -168,13 +168,12 @@ class Utility(Task):
         hostname = subprocess.check_output("hostname")
         kernel = subprocess.check_output(['uname', '-sr'])
         #disk info
-        di = subprocess.check_output(['df','-h','-t', 'ext4']).split('\n')
+        parts = self._get_mount_info()
+        
         disks = ""
-        for l in di[1:]:
-            l= l.split()
-            if len(l)>0:
-                l = l[5]+'\t'+l[1]+'\t'+l[4]+'\t'+l[0]
-                disks += Markup(l+"<br/>")
+        for part in parts:
+            l = "%s: %s" %(part,parts[part]['usedperc'])
+            disks += Markup(l+"<br/>")
         #eth info        
         ifcfg = subprocess.check_output('/sbin/ifconfig').split('\n\n')
         ifaces = ""
@@ -193,7 +192,7 @@ class Utility(Task):
 #            data[7] = data[7].split(":")[1]
 #            ifaces += Markup(data[0]+": "+data[7]+"<br/>")
         return OrderedDict([('Hostname',hostname),('Kernel',kernel),
-                            ('Time', now),('Up-Time', uptime),('Disks', disks), ('Net',ifaces)])
+                            ('Time', now),('Up-Time', uptime),('Disk Use', disks), ('Net',ifaces)])
     
     def _reset_sys(self, cleandb=True):
         

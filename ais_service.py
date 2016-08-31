@@ -387,6 +387,7 @@ class AISApp(object):
         
         #add Scheduling Menu
         self.ui.add_view(JobView(Job,db.session, name='Tasks'))
+        self.ui.add_view(ModelView(Schedule,db.session, name = 'Schedules'))
         self.ui.add_view(FileAdmin(config.DISKSTORE,name="Data"))
         
         #sqlloghdlr created for plugin use
@@ -438,11 +439,14 @@ class AISApp(object):
                 po.category= "Modules"
                 self.ui.add_view(po) 
                 
-        #Schedule Settings menu
-        self.ui.add_view(AuditorView(Auditor,db.session, name='Event Handlers', category="Settings"))
-        self.ui.add_view(ModelView(Schedule,db.session, name = 'Task Schedules',category='Settings'))
-        #add Advanced Menu
-        self.ui.add_view(ModelView(User,db.session, name='Users', category='Admin')) 
+        # Schedule Settings menu
+        # Event monitoring disabled for now
+        #self.ui.add_view(AuditorView(Auditor,db.session, name='Event Handlers', category="Settings"))
+        #self.ui.add_view(ModelView(Schedule,db.session, name = 'Task Schedules',category='Settings'))
+        
+        #add Advanced/Admin Menu
+        # TODO needs to have auth module to lockout
+        #self.ui.add_view(ModelView(User,db.session, name='Users', category='Admin')) 
         self.ui.add_view(EventView(Event,db.session,name='Event Logs', category='Admin'))
         self.ui.add_view(PluginView(Plugin,db.session,name='Module Admin', category='Admin'))         
         self.ui.add_view(LogView(Log,db.session, name='Module Logs', category='Admin')) 

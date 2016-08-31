@@ -4,7 +4,7 @@
                 <div class="panel panel-default full">
                     <div class='panel-heading'><strong>System Info</strong></div>
                     <div class='panel-body'>
-                        <dl>
+                        <dl class='dl-horizontal'>
                         {% for (name, val) in info.iteritems() %}
                             <dt>{{name}}:</dt><dd>{{val}}</dd>
                         {% endfor %}
