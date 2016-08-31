@@ -195,7 +195,7 @@ class Utility(Task):
         return OrderedDict([('Hostname',hostname),('Kernel',kernel),
                             ('Time', now),('Up-Time', uptime),('Disks', disks), ('Net',ifaces)])
     
-    def _reset_sys(self):
+    def _reset_sys(self, cleandb=True):
         
         db_path = config.DATABASE_PATH
         
@@ -205,25 +205,26 @@ class Utility(Task):
             self.logger.error("Could not find pid of ais_service: %s" % cpe.output)
             return         
         cmd = "sudo kill -HUP %s" %pid
-        #delete dbs         
-        for f in glob.glob(db_path+"*.sqlite"):
-            os.remove(f)
+        #delete dbs 
+        if cleandb:        
+            for f in glob.glob(db_path+"*.sqlite"):
+                os.remove(f)
         #now hup the service to restart
         try:
-            #self.logger.debug("Doing: %s" %cmd)
-            subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT)
+            #were starting and returning asap
+            subprocess.Popen(cmd.split(), stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as cpe:
             self.logger.error(cpe.output)
-            exit()
-            
-# TDDO make this async and return     
+            flash("Error restarting AIS service", "error")
+   
     def _reboot_sys(self):
         self.logger.info("System Module: Reboot Requested")
         command = "sudo shutdown -r now"
         try:
-            subprocess.check_output(command.split(), stderr=subprocess.STDOUT)
+            subprocess.Popen(command.split(), stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as cpe:
             self.logger.error(cpe.output)
+            flash("Error rebooting device", "error")
             
     def _conf_datetime(self, form):
         tz=form.get('timezone')

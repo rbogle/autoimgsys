@@ -55,7 +55,7 @@ class System(utility.Utility):
     
     @expose('/', methods=('GET', 'POST'))
     def plugin_view(self):  
-        from flask import request,flash  
+        from flask import request,flash,redirect 
         from flask.ext.admin import helpers as h
         
         action = request.args.get('action', None)
@@ -73,7 +73,8 @@ class System(utility.Utility):
                 self._conf_datetime(form_data)          
             if form_type == "partition":
                 flash("Changing Mount for %s on %s" %(form_data.get('part'),form_data.get('mnt_pt')))
-                self._change_mount(form_data)                       
+                self._change_mount(form_data)
+                active_tab="dsk"                   
             
         #handle actions
         if action is not None:
@@ -84,11 +85,11 @@ class System(utility.Utility):
                 flash("Logs will download shortly.")
                 return self._download_logs()
             if action == 'reboot_sys':
-                flash("reboot requested", "success")
                 self._reboot_sys()
+                return redirect(self.url)
             if action == 'reset_ais':
-                flash("Reset of AIS requested")
                 self._reset_sys()
+                return redirect(self.url)
  
         #return modal dialog     
         if modal is not None:
