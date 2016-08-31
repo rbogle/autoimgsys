@@ -1,16 +1,24 @@
 # -*- coding: utf-8 -*-
 from flask.ext.admin import expose
-from flask import Markup, jsonify, redirect
-from flask.ext.admin.form import BaseForm
-from wtforms import SelectField, TextField
-from flask.ext.admin.form.fields import DateTimeField
-from ais.lib.task import Task
-from ais.ui.models import Event,Log,Plugin
+from flask import Markup, jsonify
 from ais.ui import config
-import subprocess,datetime,pytz,re,os,glob
-from tzlocal import get_localzone, reload_localzone
-from collections import OrderedDict
+from flask.ext.admin.form import BaseForm
+from wtforms import SelectField,HiddenField,BooleanField,StringField
+from flask.ext.admin.form.fields import DateTimeField
+import pytz,os,os.path
+from tzlocal import reload_localzone
+import ais.plugins.system.utility as utility
 
+def get_data_mnts():
+    dirs = os.listdir(config.DISKSTORE)
+    choices = []
+    for d in dirs:
+        d= config.DISKSTORE+"/"+d
+        if os.path.isdir(d):
+            choices.append((d,d))  
+    choices.sort()
+    return choices
+    
 def get_tzlist():
     tzlist =list()
     tzs = pytz.common_timezones
@@ -19,12 +27,21 @@ def get_tzlist():
     return tzlist
 
 class DateTimeForm(BaseForm):
-
+    id = HiddenField()
     datetime = DateTimeField("New Date and Time")
     timezone = SelectField("Timezone", choices = get_tzlist(), default= lambda: reload_localzone().zone)
-            
+
+class PartitionForm(BaseForm):
+    id = HiddenField()
+    part = HiddenField()
+    device = StringField("Device", description="The device to mount")
+    mnt_pt = SelectField("Mount", description="Mount device on this directory in the datastore: "+config.DISKSTORE, choices=get_data_mnts())   
+    fstype = SelectField("Filesystem", description="Filesystem Format of disk", choices=[("ext4","Linux: ext4"),("vfat","Universal: FAT32"), ("ntfs","Windows: NTFS")])    
+    persist = BooleanField("Persist", description="Make this mount persist accross reboots?", default=False)
+    mount = BooleanField("Mount Now", default=False, description="Mount this directory now?")
     
-class System(Task):
+    
+class System(utility.Utility):
     
     def __init__(self, **kwargs):
         super(System, self).__init__(**kwargs)
@@ -35,23 +52,30 @@ class System(Task):
         self.use_sqllog = True
         self.view_template = self.path+'/system.html'
         self.widget_template = self.path+'/sys_widget.html'
-
-    def run(self, **kwargs):
-        pass
     
     @expose('/', methods=('GET', 'POST'))
     def plugin_view(self):  
-        from flask import request,flash  
+        from flask import request,flash,redirect 
         from flask.ext.admin import helpers as h
         
         action = request.args.get('action', None)
         modal = request.args.get('modal', None)
-        
-        #datetime form submitted
+        active_tab = request.args.get('tab', 'sys')
+        args = request.args
+     
+        #some form submitted
         if h.is_form_submitted():
-            flash("Date Time has been configured")
-            self._conf_datetime(request.form)          
-
+            form_data = request.form
+            form_type = form_data.get('id')
+            
+            if form_type == "datetime":
+                flash("Date Time has been configured")
+                self._conf_datetime(form_data)          
+            if form_type == "partition":
+                flash("Changing Mount for %s on %s" %(form_data.get('part'),form_data.get('mnt_pt')))
+                self._change_mount(form_data)
+                active_tab="dsk"                   
+            
         #handle actions
         if action is not None:
             if action == "get_events":
@@ -61,32 +85,38 @@ class System(Task):
                 flash("Logs will download shortly.")
                 return self._download_logs()
             if action == 'reboot_sys':
-                flash("reboot requested", "success")
                 self._reboot_sys()
+                return redirect(self.url)
             if action == 'reset_ais':
-                flash("Reset of AIS requested")
                 self._reset_sys()
+                return redirect(self.url)
  
         #return modal dialog     
         if modal is not None:
-            return self.get_widget_modal(modal)
+            return self.get_widget_modal(modal, args)
+            
         #return default page    
         p = [
             ('sys',self.path+"/sys_panel.html","System"),
             ('dsk',self.path+"/dsk_panel.html","Storage"),
             ('net',self.path+"/net_panel.html","Networking")
         ]
+        
+        d = self._get_device_info()
         w = self.get_widgets()
         i = self._get_sys_info()
-        return self.render(self.view_template, info=i, widgets=w, panels=p)
+        
+        return self.render(self.view_template, info=i, widgets=w, panels=p, disks=d, active=active_tab)
     
-    def get_widget_modal(self, name):
+    def get_widget_modal(self, name, kwargs):
         if name == 'reboot':
             return self.get_reboot_modal()
         if name == 'reset':
             return self.get_reset_modal()
         if name == 'datetime':
             return self.get_datetime_modal()
+        if name == 'partition':
+            return self.get_partition_modal(kwargs)
     
     def get_widgets(self):
         return [
@@ -163,138 +193,29 @@ class System(Task):
         
     def get_datetime_modal(self):
         title ='Set System Date and Time'
-        f = DateTimeForm()
+        f = DateTimeForm(id="datetime")
         ru = "/system"
-        body = self.render(self.path+'/datetime.html', dtform=f, return_url =ru)
+        body = self.render(self.path+'/modal_form.html', aform=f, return_url =ru)
         url = ""
         return jsonify({ 'title': title, 'body': body, 'url': url})
 
+    def get_partition_modal(self, args):
+        title = "Edit Partition Mounting"
+        f = PartitionForm(id="partition")
+        f.device.data= args.get('partition', '/dev/null') #disabled doesnt come back
+        f.part.data = args.get('partition', '/dev/null') #hidden comes back
+        f.mount.data = args.get('mounted', False) 
+        f.mnt_pt.choices = get_data_mnts()
+        f.mnt_pt.data = args.get('mnt_pt', '')
+        f.fstype.data = args.get('fs_type', None)
+        f.persist.data = args.get('persist', False)
         
-    def _get_sys_info(self):
-        #self.logger.info("System Module: Sys Info Requested")
-        now = subprocess.check_output("date")
-        #uptime
-        with open('/proc/uptime', 'r') as f:
-            us = float(f.readline().split()[0])
-            uptime = str(datetime.timedelta(seconds = int(us)))
-            
-        hostname = subprocess.check_output("hostname")
-        kernel = subprocess.check_output(['uname', '-sr'])
-        #disk info
-        di = subprocess.check_output(['df','-h','-t', 'ext4']).split('\n')
-        disks = ""
-        for l in di[1:]:
-            l= l.split()
-            if len(l)>0:
-                l = l[5]+'\t'+l[1]+'\t'+l[4]+'\t'+l[0]
-                disks += Markup(l+"<br/>")
-        #eth info        
-        ifcfg = subprocess.check_output('/sbin/ifconfig').split('\n\n')
-        ifaces = ""
-
-        for i in ifcfg:
-            if i != "":    
-                net = re.search("^[0-9a-z]*\w",i)
-                if net is not None:
-                    net = net.group(0)
-                addr= re.search("\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}",i)
-                if addr is not None:
-                    addr = addr.group(0)
-                    ifaces += Markup(net+": "+addr+"<br/>")
-#        for i in range(len(ifcfg))[0::10]:
-#            data=','.join( ifcfg[i:i+2]).split()
-#            data[7] = data[7].split(":")[1]
-#            ifaces += Markup(data[0]+": "+data[7]+"<br/>")
-        return OrderedDict([('Hostname',hostname),('Kernel',kernel),
-                            ('Time', now),('Up-Time', uptime),('Disks', disks), ('Net',ifaces)])
-    
-    def _reset_sys(self):
-        
-        db_path = config.DATABASE_PATH
-        
-        try:
-            pid = subprocess.check_output(['pgrep', 'ais_service'])
-        except subprocess.CalledProcessError as cpe:
-            self.logger.error(cpe.output)
-            return         
-        cmd = "sudo kill -HUP %s" %pid
-        #delete dbs         
-        for f in glob.glob(db_path+"*.sqlite"):
-            os.remove(f)
-        #now hup the service to restart
-        try:
-            #self.logger.debug("Doing: %s" %cmd)
-            subprocess.check_output(cmd.split())
-        except subprocess.CalledProcessError as cpe:
-            exit()
-    
-    def _reboot_sys(self):
-        self.logger.info("System Module: Reboot Requested")
-        command = "sudo shutdown -r now"
-        try:
-            subprocess.check_output(command.split())
-        except subprocess.CalledProcessError as cpe:
-            self.logger.error(cpe.output)
-            
-    def _conf_datetime(self, form):
-        tz=form.get('timezone')
-        dt = form.get('datetime')
-        self.logger.info("tz: %s, datetime: %s" %(tz,dt))
-        #handle tz
-        tz_now = reload_localzone().zone
-        if tz!=tz_now:
-            self._set_timezone(tz)
-        #handle datetime
-        if dt!="":
-            self._set_datetime(dt)
-        #handle ntp 
-            
-    def _set_datetime(self, datestr):
-        cmd = "sudo date --set %s" %datestr
-        try:
-           output= subprocess.check_output(cmd.split())
-           self.logger.info("DateTime set to: %s" %output)
-        except subprocess.CalledProcessError as cpe:
-            self.logger.error(cpe.output)
-            
-    def _set_timezone(self, tzname):
-        #TODO specific to Ubuntu distro
-        cmds=[
-            "sudo cp /etc/localtime /etc/localtime.old",
-            "sudo ln -sf /usr/share/zoneinfo/%s /etc/localtime" %tzname,
-            "sudo mv /tmp/timezone /etc/timezone"
-        ]
-        #make a tmp file then mv it over to /etc/timezone
-        with open('/tmp/timezone', 'wt') as outf:
-            outf.write(tzname+'\n')        
-        try:        
-            for c in cmds:
-                subprocess.check_output(c.split())
-            self.logger.info("Timezone Changed to %s"%tzname)
-        except subprocess.CalledProcessError as cpe:
-            self.logger.error(cpe.output)
-            
-    def _download_logs(self):
-        import StringIO,csv
-        from flask import send_file
-        sio = StringIO.StringIO()
-        cw = csv.writer(sio)
-        cw.writerow(['Datetime','Plugin','Module', 'Level', 'Msg', 'Trace'])
-        for log in Log.query.all():
-            cw.writerow([log.created, log.logger, log.module, log.level, log.msg, log.trace])
-        sio.seek(0)
-        return send_file(sio, attachment_filename="AIS_Logs.csv", as_attachment=True)
-    
-    def _download_events(self):
-        import StringIO,csv
-        from flask import send_file
-        sio = StringIO.StringIO()
-        cw = csv.writer(sio)
-        cw.writerow(['Datetime','Plugin','Event', 'Msg', 'Trace'])
-        for evt in Event.query.all():
-            pn = evt.plugin.name
-            cw.writerow([evt.datetime, pn, evt.code, evt.msg, evt.trace])
-        sio.seek(0)
-        return send_file(sio, attachment_filename="AIS_Events.csv", as_attachment=True)
-        
+        o={'widget_args':{
+                'device':{
+                    'disabled':'true'
+                }
+           }
+        }
+        body=self.render(self.path+"/modal_form.html", aform=f, opts=o)
+        return jsonify({'title':title, 'body':body, 'url':""})
     

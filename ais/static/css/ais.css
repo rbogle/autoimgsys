@@ -56,5 +56,13 @@
     to { transform: scale(1) rotate(360deg);}
 }
 
+.dl-horizontal dt {
+    width: auto;
+}
+
+.dl-horizontal dd {
+    margin-left: auto;
+}
+
 dt{ margin-bottom: 2px; float: left;}
 dd{ margin-bottom: 5px; padding-left: 30%; }

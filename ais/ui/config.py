@@ -2,6 +2,8 @@ import os,socket
 
 DEBUG=True
 USE_RELOADER=False
+PORT=5000
+
 # Create in-memory database
 APP_DATABASE_FILE='app_db.sqlite'
 LOG_DATABASE_FILE='log_db.sqlite'
@@ -16,7 +18,8 @@ HOSTNAME = socket.gethostname()
 
 SECRET_KEY = os.urandom(24)
 
-FILESTORE = '/mnt/data'
+FILESTORE = '/mnt/data' #where module mount their data directories
+DISKSTORE = '/mnt' # where disks can be mounted. 
 
 LOGGING = {
     'version':1,

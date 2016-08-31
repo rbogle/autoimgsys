@@ -10,13 +10,13 @@
 <!-- tab nav -->
 <ul class="nav nav-tabs" role="tablist" id="myTab">
   {% for (id,url,label) in panels %}
-  <li{{ " class='active'" if id=='sys' else ""}}><a href="#{{id}}" role="tab" data-toggle="tab">{{label}}</a></li>
+  <li class="{{ 'active' if active==id else "" }}"><a href="#{{id}}" role="tab" data-toggle="tab">{{label}}</a></li>
   {% endfor %}  
 </ul>
 <!-- tab panels -->
 <div class="tab-content" style="padding-top: 20px;">
     {% for (id,url,label) in panels %}
-    <div class="tab-pane{{' active' if id=='sys' else ''}}" id="{{id}}">
+    <div class="tab-pane{{' active' if active==id else ''}}" id="{{id}}">
         {% include url %}        
     </div>
     {% endfor %}
@@ -49,9 +49,21 @@
 
 $('#sys-modal').on('show.bs.modal', function(event){
     var button = $(event.relatedTarget);
-    var name = button.attr('id')
-    $.getJSON('/system?modal='+name, {}, function(data)
+    var args = button.attr('data-args') //dummy attrib to capture args
+    var post = {}
+    post['modal']= button.attr('id')
+    // setup generic arguments to pass back on post
+    if (args){
+        args = args.split(',')
+        for (var i=0; i< args.length; i++){
+            var tup = args[i].split(':')
+            post[tup[0]]=tup[1]
+        }
+    }
+    $.getJSON('/system', post, function(data)
             {
+                $("#sys-modal-header").removeClass().addClass("modal-header")
+                $("#sys-modal-action").removeClass().addClass("btn btn-primary")
                 $("#sys-modal-title").html(data.title)
                 if(data.hasOwnProperty('title_emph')){
                     $("#sys-modal-header").addClass(data.title_emph)
@@ -62,13 +74,26 @@ $('#sys-modal').on('show.bs.modal', function(event){
                     if(data.hasOwnProperty('url_emph')){
                         $("#sys-modal-action").addClass(data.url_emph)
                     }
+                    $("#sys-modal-footer").show()
                 }
                 else{
                     $("#sys-modal-footer").hide()
                 }
             }
     );
-})
+});
 
+
+$('.collapse').on('show.bs.collapse', function(){
+    id = "#"+$(this).attr('id')+"-icon";
+    $(id).removeClass("glyphicon-plus");
+    $(id).addClass("glyphicon-minus");
+});
+
+$('.collapse').on('hide.bs.collapse', function(){
+    id = "#"+$(this).attr('id')+"-icon";
+    $(id).removeClass("glyphicon-minus");
+    $(id).addClass("glyphicon-plus");
+});
 </script>
 {% endblock %}
