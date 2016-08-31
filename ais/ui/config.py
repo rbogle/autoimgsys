@@ -2,6 +2,8 @@ import os,socket
 
 DEBUG=True
 USE_RELOADER=False
+PORT=5000
+
 # Create in-memory database
 APP_DATABASE_FILE='app_db.sqlite'
 LOG_DATABASE_FILE='log_db.sqlite'

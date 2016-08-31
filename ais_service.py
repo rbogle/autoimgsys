@@ -27,8 +27,8 @@ class AISApp(object):
     
     def run(self):
         #fset host to 0.0.0.0 to show interface on all ips
-        # need to setup ngix or apache and use wgsi
-        self.flask.run(host="0.0.0.0", use_reloader=config.USE_RELOADER)
+        # TODO need to setup ngix or apache and use wgsi?
+        self.flask.run(host="0.0.0.0", port=config.PORT, use_reloader=config.USE_RELOADER)
     
     def pause(self):
         logger.debug("AISApp pause called")
