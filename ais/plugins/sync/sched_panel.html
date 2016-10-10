@@ -1,0 +1,24 @@
+<div class="panel panel-default full">
+    <div class="panel-heading">Data Sync Configurations</div>
+    <div class="panel-body">
+    <table class="table table-bordered table-responsive" >
+        <tr class="active"><th></th><th>Source</th><th>Destination</th><th>Excludes</th><th>Options</th></tr>
+        {% for conf in syncs %}
+        <tr>
+            <td>
+                <a id="edit" class="icon" data-toggle='modal' data-target='#sync-modal' data-args="id:{{conf.id}}" ><span class="glyphicon glyphicon-pencil"></span></a>
+                 <form id="delete" class="icon" method="POST" action="{{return_url}}?id={{conf.id}}">
+                    <button onclick="return confirm('You sure you want to delete this item?');" title="Delete record">
+                        <span class="glyphicon glyphicon-trash"></span>
+                    </button>
+                 </form>               
+            </td>
+            <td>{{conf.args.get("src", "")}}</td>
+            <td>{{conf.args.get("dst", "")}}</td>
+            <td>{{conf.args.get("excl", "")}}</td>
+            <td>{{conf.args.get("opts", "")}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    </div>
+</div>
