@@ -1,5 +1,38 @@
+<div class="panel panel-default full">  
+    <div class="panel-heading">Real-Time Synchronization Instructions</div>
+    <div class="panel-body"> 
+        Real-Time Synchroniztion monitors the source directories of the configurations selected below.<br>
+        Any changes in the source directory triggers the progam rsync to copy changes to the destination directory.<br>
+        If you enable real-time sync on a configuration, you should ensure that the same config is not being scheduled as a task.<br>
+    </div>
+</div>
+<div class="panel panel-default full">  
+    <div class="panel-heading">Data Synchronization Status</div>
+    <div class="panel-body"> 
+        
+    </div>
+</div>
+
 <div class="panel panel-default full">
     <div class="panel-heading">Real-Time Data Synchronization</div>
     <div class="panel-body">
+    <table class="table table-bordered table-responsive" >
+        <tr class="active"><th>Enable</th><th>Name</th><th>Source</th><th>Destination</th></tr>
+        {% for conf in syncs %}
+        <tr>
+            <td>
+                 <form id="enable" class="icon" method="POST" action="{{return_url}}">
+                    <input type="hidden" name="conf_id" value="{{conf.id}}">
+                    <input type="hidden" name="id" value="mkrt">
+                    <input type="checkbox" name="enabled" value={{conf.args.get("mkrt", False)}}>
+                 </form>               
+            </td>
+            <td>{{conf.name}}</td>
+            <td>{{conf.args.get("src", "")}}</td>
+            <td>{{conf.args.get("dest", "")}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
     </div>
 </div>

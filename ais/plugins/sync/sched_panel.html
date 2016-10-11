@@ -1,20 +1,32 @@
+<div class="panel panel-default full">  
+<div class="panel-heading">Data Synchronization Instructions</div>
+    <div class="panel-body"> 
+        The Data sync configurations below can be scheduled as tasks.<br>
+        When run they will trigger the program rsync to syncronize the source directory to the destinations directory.<br>
+        Excludes are file name patterns which will be excluded from the sync. ie( .git, .*)<br>
+        Options are to be used by advanced Rsync users to add specific options to the rsync command run. <br>
+</div>
+</div>
 <div class="panel panel-default full">
-    <div class="panel-heading">Data Sync Configurations</div>
+    <div class="panel-heading">Data Sync Configurations<a id="edit" class="pull-right icon" href="" data-toggle='modal' data-target='#sync-modal' data-args="conf_id:" ><span class="glyphicon glyphicon-plus"></span></a></div>
     <div class="panel-body">
     <table class="table table-bordered table-responsive" >
-        <tr class="active"><th></th><th>Source</th><th>Destination</th><th>Excludes</th><th>Options</th></tr>
+        <tr class="active"><th></th><th>Name</th><th>Source</th><th>Destination</th><th>Excludes</th><th>Options</th></tr>
         {% for conf in syncs %}
         <tr>
             <td>
-                <a id="edit" class="icon" data-toggle='modal' data-target='#sync-modal' data-args="id:{{conf.id}}" ><span class="glyphicon glyphicon-pencil"></span></a>
-                 <form id="delete" class="icon" method="POST" action="{{return_url}}?id={{conf.id}}">
+                <a id="edit" class="icon"  href="" data-toggle='modal' data-target='#sync-modal' data-args="conf_id:{{conf.id}}" ><span class="glyphicon glyphicon-pencil"></span></a>
+                 <form id="delete" class="icon" method="POST" action="{{return_url}}">
+                    <input type="hidden" name="conf_id" value="{{conf.id}}">
+                    <input type="hidden" name="id" value="delete">
                     <button onclick="return confirm('You sure you want to delete this item?');" title="Delete record">
                         <span class="glyphicon glyphicon-trash"></span>
                     </button>
                  </form>               
             </td>
+            <td>{{conf.name}}</td>
             <td>{{conf.args.get("src", "")}}</td>
-            <td>{{conf.args.get("dst", "")}}</td>
+            <td>{{conf.args.get("dest", "")}}</td>
             <td>{{conf.args.get("excl", "")}}</td>
             <td>{{conf.args.get("opts", "")}}</td>
         </tr>
