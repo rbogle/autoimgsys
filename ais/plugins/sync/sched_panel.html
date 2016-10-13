@@ -2,16 +2,17 @@
 <div class="panel-heading">Data Synchronization Instructions</div>
     <div class="panel-body"> 
         The Data sync configurations below can be scheduled as tasks.<br>
-        When run they will trigger the program rsync to syncronize the source directory to the destinations directory.<br>
-        Excludes are file name patterns which will be excluded from the sync. ie( .git, .*)<br>
-        Options are to be used by advanced Rsync users to add specific options to the rsync command run. <br>
+        When run they will trigger the program rsync to syncronize the source directory to the destination directory.<br>
+        Excludes are comma separated file name patterns which will be excluded from the sync. ie( .git, .*)<br>
+        Options are to be used by advanced rsync users to add specific options to the rsync command run. <br>
+        If real-time sync is enabled on a configuration, you may not want that the same config scheduled as a task.<br>
 </div>
 </div>
 <div class="panel panel-default full">
     <div class="panel-heading">Data Sync Configurations<a id="edit" class="pull-right icon" href="" data-toggle='modal' data-target='#sync-modal' data-args="conf_id:" ><span class="glyphicon glyphicon-plus"></span></a></div>
     <div class="panel-body">
     <table class="table table-bordered table-responsive" >
-        <tr class="active"><th></th><th>Name</th><th>Source</th><th>Destination</th><th>Excludes</th><th>Options</th></tr>
+        <tr class="active"><th></th><th>Name</th><th>Source</th><th>Destination</th><th>Excludes</th><th>Options</th><th>Real-Time</th></tr>
         {% for conf in syncs %}
         <tr>
             <td>
@@ -26,9 +27,16 @@
             </td>
             <td>{{conf.name}}</td>
             <td>{{conf.args.get("src", "")}}</td>
-            <td>{{conf.args.get("dest", "")}}</td>
+            <td>{{conf.args.get("dst", "")}}</td>
             <td>{{conf.args.get("excl", "")}}</td>
             <td>{{conf.args.get("opts", "")}}</td>
+            <td>
+            {% if conf.args.get("mkrt", false) %}
+             <span class="glyphicon glyphicon-ok"></span>           
+            {% else %}
+            <span class="glyphicon glyphicon-remove"></span>
+            {% endif %}
+            </td>
         </tr>
         {% endfor %}
     </table>

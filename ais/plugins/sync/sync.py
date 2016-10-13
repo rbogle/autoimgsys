@@ -8,7 +8,7 @@
 #R
 #   <author> Rian Bogle </author>
 
-from ais.lib.task import Task
+import ais.plugins.sync.utility as utility
 from ais.ui.models import Config,Plugin
 from ais.ui import db
 from flask.ext.admin.form import BaseForm
@@ -16,28 +16,25 @@ from wtforms import HiddenField,StringField
 from sqlalchemy.exc import SQLAlchemyError
 from flask.ext.admin import expose
 from flask import jsonify
-import datetime
+import copy
+
    
 class SyncForm(BaseForm):
     id = HiddenField()
     cid = HiddenField()
     name = StringField("Name", description="Name for this sync config")
     src = StringField("Source", description="Source Directory for this sync config")
-    dest = StringField("Destination", description="Destination for this sync config")
+    dst = StringField("Destination", description="Destination for this sync config")
     excl = StringField("Excludes", description="Comma separated name Patterns to exlude from sync")
     opts = StringField("Opts", description="Other Rsync options for this sync config")
     
-class Sync(Task):
+class Sync(utility.Utility):
            
     def __init__(self, **kwargs):
         super(Sync,self).__init__(**kwargs) 
         self.widgetized = True
         self.viewable = True
         self.enabled = True
-        
-    def run(self, **kwargs):     
-        self.last_run = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')	              
-        self.logger.info(self._print_keyword_args("Test_Task Run called", **kwargs)) 
 
     def get_widget_modal(self, name, kwargs):
         if name == 'edit':
@@ -55,7 +52,7 @@ class Sync(Task):
         f.name.data = c.name
         f.cid.data = c.id
         f.src.data = c.args.get('src', '') 
-        f.dest.data = c.args.get('dest', '') 
+        f.dst.data = c.args.get('dst', '') 
         f.excl.data = c.args.get('excl', '')
         f.opts.data = c.args.get('opts', '')
         body=self.render(self.path+"/modal_form.html", aform=f)
@@ -74,6 +71,7 @@ class Sync(Task):
             return False    
         return True   
  
+ #  Method edits or adds a runtime config object for the data sync plugin
     def _edit_config(self, form_data):
         if form_data['cid'] is not u'':
             c = Config.query.get(int(form_data['cid']))
@@ -85,7 +83,7 @@ class Sync(Task):
             
         c.args = dict()
         c.args['src'] = form_data['src']
-        c.args['dest'] = form_data['dest']
+        c.args['dst'] = form_data['dst']
         c.args['excl'] = form_data['excl']
         c.args['opts'] = form_data['opts']
         #commit it.     
@@ -97,7 +95,36 @@ class Sync(Task):
             self.logger.error(e.message)
             return False
         return True
-            
+        
+ # Method takes form data and changes config objects arg property with a mkrt field. 
+    def _make_realtime(self, form_data):
+        self.logger.debug(form_data)
+        id = int(form_data['conf_id'])
+        c = Config.query.get(id)
+        if c is None:
+            return False;
+        new_args = copy.deepcopy(c.args)
+        if form_data.get('enabled', False):       
+            new_args['mkrt'] = True
+        else:
+            new_args['mkrt'] = False
+        c.args = new_args
+        try:
+            db.session.commit()
+        except SQLAlchemyError as e:
+            self.logger.error(e.message)
+            return False    
+        return True
+
+    def _get_rtsync(self):
+        return 
+
+    def _set_rtsync(self, state):
+        if state:
+            pass
+        else:
+            pass
+         
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):
         
@@ -113,12 +140,17 @@ class Sync(Task):
             form_data = request.form
             form_type = form_data.get('id')        
             self.logger.debug("form is: %s" %form_type)
+            if form_type == "mkrt":
+                active_tab = "rtime"
+                self._make_realtime(form_data) 
             if form_type == "edit":
+                active_tab = "sched"
                 if self._edit_config(form_data):
                     flash("Sync config updated", category="message")
                 else:
                     flash("Sync could not be updated", category="error")                    
             if form_type == "delete":
+                active_tab = "sched"
                 if self._delete_config(form_data):
                     flash("Sync Removed!", category="message")
                 else:
