@@ -106,8 +106,10 @@ class Sync(utility.Utility):
         new_args = copy.deepcopy(c.args)
         if form_data.get('enabled', False):       
             new_args['mkrt'] = True
+            self.add_watch(new_args['src'])
         else:
             new_args['mkrt'] = False
+            self.remove_watch(new_args['src'])
         c.args = new_args
         try:
             db.session.commit()
@@ -116,14 +118,12 @@ class Sync(utility.Utility):
             return False    
         return True
 
-    def _get_rtsync(self):
-        return 
-
-    def _set_rtsync(self, state):
-        if state:
-            pass
-        else:
-            pass
+    def set_rtsync(self, state):
+        if bool(state) != bool(self.get_rtsync()):
+            if state:
+                self.start_rtsync()
+            else:
+                self.stop_rtsync()
          
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):
@@ -134,15 +134,20 @@ class Sync(utility.Utility):
         modal = request.args.get('modal', None)
         active_tab = request.args.get('active_tab', 'sched')
         args = request.args
-        
+        rt_enabled = self.get_rtsync()
         #some form submitted
         if h.is_form_submitted():
             form_data = request.form
             form_type = form_data.get('id')        
             self.logger.debug("form is: %s" %form_type)
+            
             if form_type == "mkrt":
                 active_tab = "rtime"
                 self._make_realtime(form_data) 
+            if form_type == "rtsync":
+                active_tab = "rtime"
+                self.set_rtsync(form_data.get('enable'))
+                rt_enabled = self.get_rtsync()
             if form_type == "edit":
                 active_tab = "sched"
                 if self._edit_config(form_data):
@@ -174,6 +179,7 @@ class Sync(utility.Utility):
             self.view_template, 
             panels = p,
             syncs = sync_configs,
+            running = rt_enabled,
             active_tab = active_tab,
             return_url = self.url
             )
