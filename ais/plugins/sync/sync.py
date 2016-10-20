@@ -35,7 +35,30 @@ class Sync(utility.Utility):
         self.widgetized = True
         self.viewable = True
         self.enabled = True
+ 
+    def configure(self, **kargs):
+        if kargs.get('sync_enabled', False):
+            self.start_rtsync() 
 
+    def get_configs(self):
+        init = Config(
+            name ="Data Sync", 
+            role="Initalize",
+            args={'sync_enabled': False}
+        )
+        cfg = Config(
+            name ="Backup of Data", 
+            role="Runtime",
+            args={
+                'src': '/mnt/data/',
+                'dst': '/mnt/backup',
+                'excl': '',
+                'opts': '',
+                'mkrt': False
+            }
+        )
+        return [init, cfg]
+           
     def get_widget_modal(self, name, kwargs):
         if name == 'edit':
             return self.get_edit_modal(kwargs)
@@ -106,10 +129,10 @@ class Sync(utility.Utility):
         new_args = copy.deepcopy(c.args)
         if form_data.get('enabled', False):       
             new_args['mkrt'] = True
-            self.add_watch(new_args['src'])
+            self.add_watch(new_args)
         else:
             new_args['mkrt'] = False
-            self.remove_watch(new_args['src'])
+            self.remove_watch(new_args)
         c.args = new_args
         try:
             db.session.commit()
@@ -119,12 +142,37 @@ class Sync(utility.Utility):
         return True
 
     def set_rtsync(self, state):
-        if bool(state) != bool(self.get_rtsync()):
-            if state:
-                self.start_rtsync()
-            else:
-                self.stop_rtsync()
-         
+        if state in ['False', 'false', 0]: 
+            state = False
+        else:
+            state = True
+        self.logger.debug("set_rtsync got: %s" %state)
+#        if bool(state) != bool(self.get_rtsync()):
+        if bool(state):
+            self.logger.debug("starting rtsync")
+            self.save_rtsync_state(True)
+            self.start_rtsync()
+        else:
+            self.logger.debug("stoping rtsync")
+            self.save_rtsync_state(False)                
+            self.stop_rtsync()
+  
+    def save_rtsync_state(self, state):
+        init = Config.query.join(Plugin).filter(Plugin.name==self.name).filter(Config.role=="Initalize").first()
+        if init is None:
+            init = Config(name = "Data Sync")             
+            init.plugin = Plugin.query.filter(Plugin.name==self.name).first()
+            init.role = "Initialize"
+            init.args = dict()
+            init.args['sync_enabled'] = bool(state)
+            db.session.add(init)
+        else:
+            new_args = copy.deepcopy(init.args)
+            new_args['sync_enabled'] = bool(state)
+            init.args = new_args
+#             init.args['sync_enabled'] = bool(state)
+        db.session.commit()
+       
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):
         
@@ -170,6 +218,7 @@ class Sync(utility.Utility):
         
 
         p = [
+            ('otime', self.path+"/otime_panel.html","One-Time Synchronization"),
             ('sched',self.path+"/sched_panel.html","Data Sync Configuration"),
             ('rtime',self.path+"/rtime_panel.html","Real-Time Synchronization")
         ]

@@ -8,10 +8,31 @@
         If you enable real-time sync on a configuration, you may not want that the same config scheduled as a task.<br>
     </div>
 </div>
-<div class="panel panel-default full">  
+<div class="panel full {{ 'panel-success' if running else 'panel-danger'}}">  
     <div class="panel-heading">Real-Time Sync Status</div>
     <div class="panel-body"> 
-        
+		<div id='rtsync_status' class='pull-left'>
+			{% if running %}
+				<span class="glyphicon glyphicon-ok"></span>
+				<span class="status_msg">Running</span>
+			{% else %}
+				<span class="glyphicon glyphicon-remove"></span>
+				<span class="status_msg">Not Syncing</span>
+			{% endif %}		
+		</div>
+		<div id='sync_ctl_btns'  class='pull-right'>
+                  <form id="rtsync" method="POST" action="{{return_url}}">
+                  <input type="hidden" name="enable" value="{{ not running }}">
+                  <input type="hidden" name="id" value="rtsync">
+			<a class="btn btn-primary" href="javascript:void(0);" onclick="$(this).closest('form').submit();">
+			{% if running %}
+                        <span class="glyphicon glyphicon-off"></span> Stop
+			{% else %}
+                        <span class="glyphicon glyphicon-play-circle"></span> Start
+			{% endif %}	
+                  </a>
+                 </form>
+        </div>
     </div>
 </div>
 

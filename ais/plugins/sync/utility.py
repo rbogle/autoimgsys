@@ -2,7 +2,7 @@
 from ais.lib.task import Task
 from ais.ui.models import Config,Plugin
 from ais.ui import db
-import datetime,subprocess,os,logging
+import datetime,subprocess,os,logging,copy,time
 import pyinotify
 
 
@@ -61,7 +61,7 @@ class Rsync(object):
                 cp.cast(cpe)
         else:
             try:
-                subprocess.popen(cmd.split())
+                subprocess.Popen(cmd.split())
             except subprocess.CalledProcessError as cpe:
                 self.logger.error(cpe.message)
                 cp.cast(cpe)
@@ -86,7 +86,7 @@ class SyncEvent(pyinotify.ProcessEvent):
         self.logger.debug("caught %s on %s" %(event.maskname, os.path.join(event.path, event.name)))
         for apath in wpaths:
             if os.path.realpath(apath['src']) in os.path.realpath(event.path):
-                self.sync(apath)
+                self.sync(**apath)
                 break
         
 
@@ -96,7 +96,8 @@ class Utility(Task):
         super(Utility, self).__init__(**kwargs)
         self.rsync = Rsync(**kwargs)
         self.syncevt = SyncEvent(sync_method = self.rsync.sync)
-        self.watchman = pyinotify.WatchManager()
+        self.watchman = None #pyinotify.WatchManager()
+        self.watch_delay = kwargs.get("delay", 30)
         self.notifier = None
         default_events = [
             "IN_CLOSE_WRITE",
@@ -106,13 +107,13 @@ class Utility(Task):
             "IN_MOVED_TO"
         ]
         self.events = kwargs.get("watch_events", default_events)
-    
+
     def run(self, **kwargs):     
         self.last_run = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')	              
         self.logger.debug("sync.utility.run called %s" %kwargs) 
         result = self.rsync.sync(**kwargs)
         self.logger.info(result.output)
-
+    
     def get_rtsync(self):
         if self.notifier is not None:
             return self.notifier.isAlive()
@@ -123,29 +124,48 @@ class Utility(Task):
 
     def add_watch(self, apath):
         if self.get_rtsync():
+            wpath = copy.deepcopy(apath)
             mask = self.get_mask()
-            self.watchman.add_watch(apath, mask, rec=True, auto_add=True)
+            self.watchman.add_watch(str(wpath['src']), mask, rec=True, auto_add=True)
+            wpath['wait']=False
+            self.rsync.sync(**wpath)
 
     def remove_watch(self,apath):
         if self.get_rtsync():
-            mask = self.get_mask()
-            self.watchman.rm_watch(apath, mask, rec=True, auto_add=True)
+            wd = self.watchman.get_wd(str(apath['src']))
+            if wd is not None:
+                self.watchman.rm_watch(wd, rec=True)
     
     def start_rtsync(self):
-        self.notifier = pyinotify.ThreadedNotifier(self.watchman, self.syncevt)
-        mask = self.get_mask()
-        wpaths = self.syncevt.get_wpaths()
-        for awpath in wpaths:
-            self.watchman.add_watch(awpath['src'], mask, rec=True, auto_add=True)
-            # do an initial sync, dont wait for rsync to finish.
-            awpath['wait']=False
-            self.rsync.sync(**awpath)
-        self.notifier.start()
-        
-    
+        if self.notifier is None:
+            self.watchman = pyinotify.WatchManager()
+            self.notifier = pyinotify.ThreadedNotifier(self.watchman, self.syncevt, read_freq=self.watch_delay)
+            self.notifier.coalesce_events(True)
+            mask = self.get_mask()
+            wpaths = self.syncevt.get_wpaths()
+            for awpath in wpaths:
+                self.logger.debug("adding %s to sync watches" %awpath['src'])
+                wpath = copy.deepcopy(awpath)
+                self.watchman.add_watch(wpath['src'], mask, rec=True, auto_add=True)
+                # do an initial sync, dont wait for rsync to finish.
+                wpath['wait']=False
+                self.rsync.sync(**wpath)
+            self.logger.debug("starting notifier...")
+            self.notifier.start()
+        else:
+            self.logger.debug("start_rtsync called by notifier not none.")
+            
     def stop_rtsync(self):
-        self.notifier.stop()
-        self.notifier = None
+        if self.notifier is not None:
+            watches = self.syncevt.get_wpaths()
+            for watch in watches:
+                wd = self.watchman.get_wd(watch['src'])
+                self.watchman.rm_watch(wd, rec=True)
+            self.notifier.stop()
+            #wait for thread to closeout before destroying objs.
+            while self.notifier.isAlive():
+                time.sleep(1)
+            self.notifier = None
+            self.watchman = None
+
         
-        
- 
