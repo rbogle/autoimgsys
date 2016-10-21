@@ -1,24 +1,25 @@
+
 <div class="panel panel-default full">  
-<div class="panel-heading">Data Synchronization Instructions</div>
-    <div class="panel-body"> 
-        The data synchronization configurations below can be scheduled as tasks.<br>
-        When run they will trigger the program rsync to syncronize the source directory to the destination directory.<br>
-        Excludes are comma separated file name patterns which will be excluded from the sync. ie ( *.git, .*)<br>
-        Options are to be used by advanced rsync users to add specific options to the rsync command run. <br>
-        If the destination directory does not exist, it will be created.<br>
-        If you want data synchronized to an external drive it should be mounted first. <br>
-        If real-time sync is enabled on a configuration, you may not want that the same config scheduled as a task.<br>
-</div>
+<div class="panel-heading">Data Synchronization Instructions<a class="pull-right icon" href="javascript:void(0);" data-toggle="collapse" data-target="#dsi"><span class="glyphicon glyphicon-minus"></span></a></div>
+        <div id="dsi" class="panel-body collapse in"> 
+            The data synchronization configurations below can be scheduled as tasks.<br>
+            When run they will trigger the program rsync to syncronize the source directory to the destination directory.<br>
+            Excludes are comma separated file name patterns which will be excluded from the sync. ie ( *.git, .*)<br>
+            Options are to be used by advanced rsync users to add specific options to the rsync command run. <br>
+            If the destination directory does not exist, it will be created.<br>
+            If you want data synchronized to an external drive it should be mounted first: <a href="/system/?tab=dsk">System Storage</a> <br>
+            If real-time sync is enabled on a configuration, you may not want that the same config scheduled as a task.<br>
+        </div>
 </div>
 <div class="panel panel-default full">
-    <div class="panel-heading">Data Sync Configurations<a id="edit" class="pull-right icon" href="" data-toggle='modal' data-target='#sync-modal' data-args="conf_id:" ><span class="glyphicon glyphicon-plus"></span></a></div>
+    <div class="panel-heading">Data Sync Configurations<a id="edit" class="pull-right icon" href="javascript:void(0);" data-toggle='modal' data-target='#sync-modal' data-args="conf_id:" >New <span class="glyphicon glyphicon-cog"></span></a></div>
     <div class="panel-body">
     <table class="table table-bordered table-responsive" >
         <tr class="active"><th></th><th>Name</th><th>Source</th><th>Destination</th><th>Excludes</th><th>Options</th><th>Real-Time</th></tr>
         {% for conf in syncs %}
         <tr>
             <td>
-                <a id="edit" class="icon"  href="" data-toggle='modal' data-target='#sync-modal' data-args="conf_id:{{conf.id}}" ><span class="glyphicon glyphicon-pencil"></span></a>
+                <a id="edit" class="icon"  href="javascript:void(0);" data-toggle='modal' data-target='#sync-modal' data-args="conf_id:{{conf.id}}" ><span class="glyphicon glyphicon-pencil"></span></a>
                  <form id="delete" class="icon" method="POST" action="{{return_url}}">
                     <input type="hidden" name="conf_id" value="{{conf.id}}">
                     <input type="hidden" name="id" value="delete">

@@ -3,10 +3,16 @@ from flask import redirect, abort, send_file
 from flask.ext.admin._compat import urljoin
 from flask.ext.admin.contrib.fileadmin import FileAdmin
 from flask.ext.admin.base import expose
-import os 
+import shutil
 import os.path as op
 import logging
 
+
+# subclass FileAdmin and overload download to add the
+# option to zip a directory up and download it. 
+# is it better to redirect to the parent or send_file the zip.
+# both wait till make_archive finishes, but the client may timeout
+# TODO should it be lauched as thread with callback?
 class AisFileAdmin(FileAdmin):
     
     @expose('/download/<path:path>')
@@ -29,6 +35,6 @@ class AisFileAdmin(FileAdmin):
             return redirect(urljoin(base_url, path))
         if op.isdir(directory):
             logger.debug("Directory download asked for: %s" %path)
-            logger.debug("Directory is %s" %directory)
-            return redirect(self._get_dir_url('.index',path))
+            shutil.make_archive(directory,'zip',directory)
+            return redirect(self._get_dir_url('.index', op.dirname(path)))
         return send_file(directory)

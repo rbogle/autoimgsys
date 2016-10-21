@@ -180,7 +180,7 @@ class Sync(utility.Utility):
         from flask import flash,request
 
         modal = request.args.get('modal', None)
-        active_tab = request.args.get('active_tab', 'sched')
+        active_tab = request.args.get('tab', 'otime')
         args = request.args
         rt_enabled = self.get_rtsync()
         #some form submitted
