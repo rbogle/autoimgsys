@@ -91,5 +91,30 @@ $('.collapse').on('show.bs.collapse', function(){
 $('.collapse').on('hide.bs.collapse', function(){
     $(this).parent().find(".glyphicon-minus").removeClass("glyphicon-minus").addClass("glyphicon-plus");
 });
+
+// use ajax to get page updates
+
+function update_status(){
+    var post = {}
+    post['id'] = "status"
+    $.post({{return_url}}, post, function(data){
+        //update status space
+        $.each(data.alerts, function(key, val)
+            {
+                $("#status").append(
+                    "<div class='alert alert-dismissable alert-" + val.cat+"'>"+
+                    val.txt+
+                    "<button type='button' class='close' data-dismiss='alert' aria-hidden='true'>&times;</button></div>"
+                );
+                $(".alert-dismissable").fadeTo(15000,500).slideUp(500,function(){
+                        $(".alert-dismissable").alert('close');
+                });                              
+            }
+        )
+     }, 'json');
+}
+
+var status_update = setInterval( update_status, 30000);
+
 </script>
 {% endblock %}

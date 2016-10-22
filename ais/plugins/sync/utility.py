@@ -99,6 +99,7 @@ class Utility(Task):
         self.watchman = None #pyinotify.WatchManager()
         self.watch_delay = kwargs.get("delay", 30)
         self.notifier = None
+        self.statusq = list()
         default_events = [
             "IN_CLOSE_WRITE",
             "IN_CREATE",

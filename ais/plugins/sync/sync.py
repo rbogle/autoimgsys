@@ -141,6 +141,10 @@ class Sync(utility.Utility):
             return False    
         return True
 
+    def _do_rsync(self, form_data):
+        src = form_data.get('src', "")
+        dst = form_data.get('dst', "")
+        
     def set_rtsync(self, state):
         if state in ['False', 'false', 0]: 
             state = False
@@ -172,6 +176,16 @@ class Sync(utility.Utility):
             init.args = new_args
 #             init.args['sync_enabled'] = bool(state)
         db.session.commit()
+
+    def get_status(self):
+#       alert = {
+#        'cat': 'info',
+#         'txt': 'All is well'
+#        }
+#       self.statusq.append(alert) 
+       alerts = copy.deepcopy(self.statusq)
+       self.statusq =list()
+       return jsonify(alerts=alerts)
        
     @expose('/', methods=('GET','POST'))
     def plugin_view(self):
@@ -188,7 +202,11 @@ class Sync(utility.Utility):
             form_data = request.form
             form_type = form_data.get('id')        
             self.logger.debug("form is: %s" %form_type)
-            
+            if form_type == "status":
+                return self.get_status()                
+            if form_type =="rsync":
+                active_tab = "otime"
+                self._do_rsync(form_data)
             if form_type == "mkrt":
                 active_tab = "rtime"
                 self._make_realtime(form_data) 

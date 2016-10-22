@@ -17,6 +17,11 @@
 {% block access_control %}
         <div id="device-time" class="pull-right"></div>
 {% endblock%}
+{% block messages %}
+    <div id="status">
+        {{super()}}
+    </div>
+{% endblock %}
 
 {% block tail %}
 {{super()}}
