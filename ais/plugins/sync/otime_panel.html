@@ -1,0 +1,29 @@
+<div class="panel panel-default full">  
+    <div class="panel-heading">One-Time Synchronization Instructions<a class="pull-right icon" href="javascript:void(0);" data-toggle="collapse" data-target="#osi"><span class="glyphicon glyphicon-minus"></span></a></div>
+    <div id="osi" class="panel-body collapse in"> 
+        One-Time Synchroniztion allows the on demand copy of the source directory to the destination directory input below.<br>
+        Excution triggers the progam rsync to copy any differences from the source to the destination directory.<br>
+        If the destination directory does not exist, it will be created.<br>
+        If the destination directory is an external disk (eg USB drive) you moust mount if first: 
+        <a href="/system/?tab=dsk">System Storage</a>
+    </div>
+</div>
+<div class="panel panel-default full">  
+    <div class="panel-heading">One-Time Synchronization</div>
+    <div class="panel-body"> 
+     <form id="rsync"  method="POST" action="{{return_url}}">
+        <input type="hidden" name="id" value="rsync">
+        <div class="form-group">
+            <label for="src"> Source Directory</label>
+            <input id="src" class="form-control" type="text" name="src">
+        </div>
+        <div class="form-group">
+            <label for="dst"> Source Directory</label>
+            <input id="dst" class="form-control" type="text" name="dst">
+        </div>
+        <button onclick="return confirm('You sure you want to sync these directories?');" title="Sync Now">
+         Sync Now <span class="glyphicon glyphicon-transfer"></span>
+        </button>
+     </form> 
+    </div>
+</div>

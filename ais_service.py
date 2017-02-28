@@ -7,6 +7,7 @@ from flask.ext.admin.contrib.fileadmin import FileAdmin
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # local packages
+from ais.lib.fileadmin import AisFileAdmin
 from ais.lib.task import Task
 from ais.lib.listener import Listener
 from ais.lib.relay import Relay
@@ -329,7 +330,7 @@ class AISApp(object):
         logger.debug("Flask root %s" %self.flask.root_path)
         self.db = db
         self.database_file = config.DATABASE_PATH+config.APP_DATABASE_FILE
-        self.seed_db = False
+        #self.seed_db = False
             
         #setup plugin management and discovery
         plugin_manager = PluginManagerSingleton.get()
@@ -348,7 +349,7 @@ class AISApp(object):
         if not os.path.exists(self.database_file):
             logger.info("Initializing DB")
             self.initalize_db()
-            self.seed_db = True
+            #self.seed_db = True
 
         #make sure filestore exists for FileAdmin and plugins
         if not os.path.isdir(config.FILESTORE):    
@@ -388,7 +389,7 @@ class AISApp(object):
         #add Scheduling Menu
         self.ui.add_view(JobView(Job,db.session, name='Tasks'))
         self.ui.add_view(ModelView(Schedule,db.session, name = 'Schedules'))
-        self.ui.add_view(FileAdmin(config.DISKSTORE,name="Data"))
+        self.ui.add_view(AisFileAdmin(config.DISKSTORE, endpoint="data",name="Data"))
         
         #sqlloghdlr created for plugin use
         sqlloghdlr = SQLAlchemyHandler()
@@ -405,13 +406,6 @@ class AISApp(object):
             po = pi.plugin_object
             po.name = pi.name
             
-#            #starting with clean db, so give plugins opp to seed db.
-#            if self.seed_db:
-#                plg = Plugin.query.filter_by(name=po.name).first()
-#                for cfg in po.get_configs():
-#                    cfg.plugin = plg
-#                    db.session.add(cfg)
-#                db.session.commit()
             #give each plugin its own sqllog in its own table 
             if po.use_sqllog:            
                 logger.debug("Config sqllog handler to plugin logger")

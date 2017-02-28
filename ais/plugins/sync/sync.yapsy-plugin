@@ -1,0 +1,8 @@
+[Core]
+Name = Data Sync
+Module = sync
+
+[Documentation]
+Author = Rian Bogle
+Version = 0.1
+Description = Rsync interface for scheduled tasks and for threaded inotify triggered sync.  

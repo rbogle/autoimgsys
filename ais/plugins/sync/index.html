@@ -1,0 +1,120 @@
+{% extends "admin/master.html" %}
+{% import 'admin/lib.html' as lib with context %}
+
+{% block head %}
+    {{ super() }}
+    {{ lib.form_css() }}
+{% endblock %}
+
+{% block body %}
+<!-- tab nav -->
+<ul class="nav nav-tabs" role="tablist" id="myTab">
+  {% for (id,url,label) in panels %}
+  <li class="{{ 'active' if active_tab==id else "" }}"><a href="#{{id}}" role="tab" data-toggle="tab">{{label}}</a></li>
+  {% endfor %}  
+</ul>
+<!-- tab panels -->
+<div class="tab-content" style="padding-top: 20px;">
+    {% for (id,url,label) in panels %}
+    <div class="tab-pane{{' active' if active_tab==id else ''}}" id="{{id}}">
+        {% include url %}        
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="sync-modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header" id="sys-modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="sync-modal-title"></h4>
+      </div>
+      <div class="modal-body" id="sync-modal-body">
+      </div>
+      <div class="modal-footer" id="sync-modal-footer">
+        <a class="btn btn-default" data-dismiss="modal">Cancel</a>
+        <a class="btn btn-primary" id="sys-modal-action">Ok</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+{% endblock %}
+
+{% block tail %}
+  {{ super() }}
+  {{ lib.form_js() }}
+<!-- javascript goes in here-->
+<script>
+$('#sync-modal').on('show.bs.modal', function(event){
+    var button = $(event.relatedTarget);
+    var args = button.attr('data-args') //dummy attrib to capture args
+    var post = {}
+    post['modal']= button.attr('id')
+    // setup generic arguments to pass back on post
+    if (args){
+        args = args.split(',')
+        for (var i=0; i< args.length; i++){
+            var tup = args[i].split(':')
+            post[tup[0]]=tup[1]
+        }
+    }
+    $.getJSON({{return_url}}, post, function(data)
+            {
+                //$("#sync-modal-header").removeClass().addClass("modal-header")
+                //$("#sync-modal-action").removeClass().addClass("btn btn-primary")
+                $("#sync-modal-title").html(data.title)
+                if(data.hasOwnProperty('title_emph')){
+                    $("#sync-modal-header").addClass(data.title_emph)
+                }
+                $("#sync-modal-body").html(data.body)
+                if(data.url !=""){
+                    $("#sync-modal-action").attr('href', data.url)
+                    if(data.hasOwnProperty('url_emph')){
+                        $("#sync-modal-action").addClass(data.url_emph)
+                    }
+                    $("#sync-modal-footer").show()
+                }
+                else{
+                    $("#sync-modal-footer").hide()
+                }
+            }
+    );
+});
+
+$('.collapse').on('show.bs.collapse', function(){
+    $(this).parent().find(".glyphicon-plus").removeClass("glyphicon-plus").addClass("glyphicon-minus");
+});
+
+$('.collapse').on('hide.bs.collapse', function(){
+    $(this).parent().find(".glyphicon-minus").removeClass("glyphicon-minus").addClass("glyphicon-plus");
+});
+
+// use ajax to get page updates
+
+function update_status(){
+    var post = {}
+    post['id'] = "status"
+    $.post({{return_url}}, post, function(data){
+        //update status space
+        $.each(data.alerts, function(key, val)
+            {
+                $("#status").append(
+                    "<div class='alert alert-dismissable alert-" + val.cat+"'>"+
+                    val.txt+
+                    "<button type='button' class='close' data-dismiss='alert' aria-hidden='true'>&times;</button></div>"
+                );
+                $(".alert-dismissable").fadeTo(15000,500).slideUp(500,function(){
+                        $(".alert-dismissable").alert('close');
+                });                              
+            }
+        )
+     }, 'json');
+}
+
+var status_update = setInterval( update_status, 30000);
+
+</script>
+{% endblock %}
