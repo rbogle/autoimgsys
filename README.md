@@ -1,6 +1,8 @@
 # Automated Imaging System (AIS)
 
-USGS Automated Imaging System (AIS) is a python based webserver which enables scheduling and control of automated image capture from imaging devices attached via GigE, USB, or IP protocols.
+USGS Automated Imaging System (AIS) is a python based webserver which enables  scheduling and control of automated image capture from imaging devices attached via GigE, USB, or IP protocols. More generically it can be used to schedule any data collection via sensors attached to the system. Its meant to be deployed on SBC linux systems. System Os customization is up to the user. Typical configuration includes providing wifi AP for UI connectivity, GPS based clock, USB cellular modem for data uploads, Phidget USB controlled relays for device power control, POE for device power and comms. 
+
+Fundamentally this is a python based task scheduler, constructed to see Modules (plugins) as potential tasks to be executed based upon a chron form schedule. Modules can be written to perform any action, but typically are hardware drivers for external sensors e.g. cameras. We have two camera modules: one for a JAI dual CCD GigE camera, and one for an AST single CCD GigE camera. Additional modules include drivers for Phidget based boards, data synchronization, and basic system control. Each module provides its own interface to the UI.
 
 ## Front Page:
 ![](https://cloud.githubusercontent.com/assets/7741121/24219947/d9e8f0a4-0f05-11e7-9543-dff0e0e91f43.png)
